@@ -95,7 +95,7 @@ const LoginPage: React.FC = () => {
 
         try {
             // Replace with your actual API endpoint
-            const response = await CustomAxios.post('/api/auth/login', {
+            const response = await CustomAxios.post('/api/authentication/login', {
                 login,
                 password
             });

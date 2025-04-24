@@ -7,12 +7,15 @@ import path from 'path';
 import child_process from 'child_process';
 import { env } from 'process';
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 const baseFolder =
     env.APPDATA !== undefined && env.APPDATA !== ''
         ? `${env.APPDATA}/ASP.NET/https`
         : `${env.HOME}/.aspnet/https`;
 
-const certificateName = "entitystarage.client";
+const certificateName = "protolink.client";
 const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
 const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
 
@@ -35,7 +38,7 @@ if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
 }
 
 const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_HTTPS_PORT}` :
-    env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : 'http://localhost:5069';
+    env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : 'http://localhost:80';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -47,31 +50,54 @@ export default defineConfig({
     },
     server: {
         proxy: {
-            '^/weatherforecast': {
+            '^/api': {
                 target,
-                secure: false
-            },
-            '^/authentication': {
-                target,
-                secure: false
-            },
-            '^/entities': {
-                target,
-                secure: false
-            },
-            '^/files': {
-                target,
-                secure: false
+                changeOrigin: true,
+                secure: false,
+                rewrite: path => path.replace(/^\//, '')
             },
             '^/scalar': {
                 target,
-                secure: false
+                changeOrigin: true,
+                secure: false,
+                rewrite: path => path.replace(/^\//, '')
             },
-            '^/home': {
+            '^/test': {
                 target,
-                secure: false
+                changeOrigin: true,
+                secure: false,
+                rewrite: path => path.replace(/^\//, '')
+                //configure: (proxy) => {
+                //    proxy.on('error', (err) => {
+                //        console.log(target);
+                //        console.log('proxy error', err);
+                //    });
+                //    proxy.on('proxyReq', (_, req) => {
+                //        console.log(req.method, `${target}${req.url}`);
+                //    });
+                //    proxy.on('proxyRes', (proxyRes, req) => {
+                //        console.log(proxyRes.statusCode, req.url);
+                //    });
+                //}
             }
         },
         port: parseInt(env.DEV_SERVER_PORT || '57252')
     }
 })
+
+//const stringify = (obj: unknown) => {
+//    let cache: unknown[]|null = [];
+//    const str = JSON.stringify(obj, function (_, value) {
+//        if (typeof value === "object" && value !== null) {
+//            if (cache?.indexOf(value) !== -1) {
+//                // Circular reference found, discard key
+//                return;
+//            }
+//            // Store value in our collection
+//            cache.push(value);
+//        }
+//        return value;
+//    });
+//    cache = null; // reset the cache
+//    return str;
+//}

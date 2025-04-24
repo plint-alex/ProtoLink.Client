@@ -1,6 +1,6 @@
 ﻿import React from 'react'
 import { Link } from 'react-router'
-import { AppBar, Toolbar, Typography, InputBase, Button, CssBaseline } from '@mui/material'
+import { AppBar, Toolbar, InputBase, Button, CssBaseline } from '@mui/material'
 import { alpha, styled } from '@mui/material/styles'
 import { Search } from '@mui/icons-material'
 import logoSrc from './images/logo-removebg.png'
@@ -103,6 +103,7 @@ const HomePage: React.FC = () => {
                     <LogoStyled
                         src={logoSrc}
                     />
+                    Link what you want
                     <SearchStyled>
                         <SearchIconStyled>
                             <Search />
@@ -114,7 +115,7 @@ const HomePage: React.FC = () => {
                     </SearchStyled>
                     <LoginStyled>
                         {authentication.accessToken && <RightTabSpanStyled>{authentication.userName}</RightTabSpanStyled>}
-                        <RightTabLinkStyled to={`/admin/'}${location.search ? `?${adminParams}` : ''}`} >Admin</RightTabLinkStyled>
+                        <RightTabLinkStyled to={`/Explorer/'}${location.search ? `?${adminParams}` : ''}`} >Explorer</RightTabLinkStyled>
                         {!authentication.accessToken && <RightTabLinkStyled to={`/login/?${loginParams.toString()}`}>Login</RightTabLinkStyled>}
                         {authentication.accessToken && <RightTabButtonStyled onClick={() => { } }>Logout</RightTabButtonStyled>}
                     </LoginStyled>
