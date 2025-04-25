@@ -66,6 +66,9 @@ const RightTabSpanStyled = styled('span')(({ theme }) => ({
 const RightTabLinkStyled = styled(Link)(({ theme }) => ({
     margin: theme.spacing(1, 1, 1, 7),
 }));
+const RightTabAStyled = styled('a')(({ theme }) => ({
+    margin: theme.spacing(1, 1, 1, 7),
+}));
 const RightTabButtonStyled = styled(Button)(({ theme }) => ({
     margin: theme.spacing(1, 1, 1, 7),
 }));
@@ -114,6 +117,7 @@ const HomePage: React.FC = () => {
                         />
                     </SearchStyled>
                     <LoginStyled>
+                        <RightTabAStyled href={`http://protolink.ru/scalar`} target="_blank">API</RightTabAStyled>
                         {authentication.accessToken && <RightTabSpanStyled>{authentication.userName}</RightTabSpanStyled>}
                         <RightTabLinkStyled to={`/Explorer/'}${location.search ? `?${adminParams}` : ''}`} >Explorer</RightTabLinkStyled>
                         {!authentication.accessToken && <RightTabLinkStyled to={`/login/?${loginParams.toString()}`}>Login</RightTabLinkStyled>}
