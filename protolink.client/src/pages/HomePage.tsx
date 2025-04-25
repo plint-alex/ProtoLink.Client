@@ -15,7 +15,7 @@ const HeaderHeightStyled = styled('div')(({ theme }) => ({
 const AppBarStyled = styled(AppBar)(({ theme }) => ({
     [theme.breakpoints.up('sm')]: {
         zIndex: theme.zIndex.drawer + 1,
-        },
+    },
 }));
 const LogoStyled = styled('img')(({ theme }) => ({
     marginTop: theme.spacing(1),
@@ -24,41 +24,53 @@ const LogoStyled = styled('img')(({ theme }) => ({
 }));
 const SearchStyled = styled('div')(({ theme }) => ({
     flexGrow: 1,
-        position: 'relative',
-            borderRadius: theme.shape.borderRadius,
-                backgroundColor: alpha(theme.palette.common.white, 0.15),
-                    '&:hover': {
+    position: 'relative',
+    borderRadius: theme.shape.borderRadius,
+    backgroundColor: alpha(theme.palette.common.white, 0.15),
+    '&:hover': {
         backgroundColor: alpha(theme.palette.common.white, 0.25),
-        },
+    },
     marginLeft: 0,
-        width: '100%',
-            [theme.breakpoints.up('sm')]: {
+    width: '100%',
+    [theme.breakpoints.up('sm')]: {
         marginLeft: theme.spacing(1),
-            width: 'auto',
-        },
+        width: 'auto',
+    },
 }));
 const SearchIconStyled = styled('div')(({ theme }) => ({
     width: theme.spacing(7),
-        height: '100%',
-            position: 'absolute',
-                pointerEvents: 'none',
-                    display: 'flex',
-                        alignItems: 'center',
-                            justifyContent: 'center',
+    height: '100%',
+    position: 'absolute',
+    pointerEvents: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+}));
+const InputBaseStyled = styled(InputBase)(({ theme }) => ({
+    color: 'inherit',
+    padding: theme.spacing(1, 1, 1, 7),
+    transition: theme.transitions.create('width'),
+    width: '100%',
+    [theme.breakpoints.up('sm')]: {
+        width: 155,
+        '&:focus': {
+            width: 200,
+        },
+    },
 }));
 const LoginStyled = styled('div')(({ theme }) => ({
     position: 'relative',
-        borderRadius: theme.shape.borderRadius,
-            backgroundColor: alpha(theme.palette.common.white, 0.15),
-                '&:hover': {
+    borderRadius: theme.shape.borderRadius,
+    backgroundColor: alpha(theme.palette.common.white, 0.15),
+    '&:hover': {
         backgroundColor: alpha(theme.palette.common.white, 0.25),
-        },
+    },
     marginLeft: 0,
-        width: '100%',
-            [theme.breakpoints.up('sm')]: {
+    width: '100%',
+    [theme.breakpoints.up('sm')]: {
         marginLeft: theme.spacing(1),
-            width: 'auto',
-        },
+        width: 'auto',
+    },
 }));
 const RightTabSpanStyled = styled('span')(({ theme }) => ({
     margin: theme.spacing(1, 1, 1, 7),
@@ -111,8 +123,8 @@ const HomePage: React.FC = () => {
                         <SearchIconStyled>
                             <Search />
                         </SearchIconStyled>
-                        <InputBase
-                            placeholder="Поиск …"                          
+                        <InputBaseStyled
+                            placeholder="Поиск …"
                             inputProps={{ 'aria-label': 'Search' }}
                         />
                     </SearchStyled>
@@ -121,7 +133,7 @@ const HomePage: React.FC = () => {
                         {authentication.accessToken && <RightTabSpanStyled>{authentication.userName}</RightTabSpanStyled>}
                         <RightTabLinkStyled to={`/Explorer/'}${location.search ? `?${adminParams}` : ''}`} >Explorer</RightTabLinkStyled>
                         {!authentication.accessToken && <RightTabLinkStyled to={`/login/?${loginParams.toString()}`}>Login</RightTabLinkStyled>}
-                        {authentication.accessToken && <RightTabButtonStyled onClick={() => { } }>Logout</RightTabButtonStyled>}
+                        {authentication.accessToken && <RightTabButtonStyled onClick={() => { }}>Logout</RightTabButtonStyled>}
                     </LoginStyled>
                 </Toolbar>
             </AppBarStyled>
