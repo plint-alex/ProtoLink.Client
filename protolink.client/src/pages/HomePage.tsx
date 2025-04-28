@@ -5,7 +5,7 @@ import { alpha, styled } from '@mui/material/styles'
 import { Search } from '@mui/icons-material'
 import logoSrc from './images/logo-removebg.png'
 
-import { useSelector } from 'react-redux'
+import { useAppSelector } from '../store/reducers/store';
 //import { login } from '../store/actions/authentication'
 import { RootState } from '../store/reducers/store'
 
@@ -100,7 +100,7 @@ const RightTabButtonStyled = styled(Button)(({ theme }) => ({
 //}));
 
 const HomePage: React.FC = () => {
-    const authentication = useSelector((state: RootState) => state.authentication)
+    const authentication = useAppSelector((state) => state.authentication)
 
     const search = location.search;
     const queryString = new URLSearchParams(search);

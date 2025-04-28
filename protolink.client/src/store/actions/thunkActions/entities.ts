@@ -5,7 +5,7 @@ import { addEntityContract } from '../entities'
 
 export const login = createAsyncThunk<void, addEntityContract, { dispatch: AppDispatch }>('entities/addEntity', async (data/*, { dispatch }*/) => {
     try {
-        await axios.post(`entities/addEntity`, data).then((response) => response.data.results)
+        await axios.post(`/api/entities/addEntity`, data).then((response) => response.data.results)
         //dispatch(setAuthentication(result))
     } catch (e) {
         console.error(e)

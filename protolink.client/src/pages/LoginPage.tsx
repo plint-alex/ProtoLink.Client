@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../store/reducers/store';
 import {
     Button,
     TextField,
@@ -12,8 +12,7 @@ import {
     CircularProgress
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { setAuthentication, authenticationData } from '../store/actions/authentication';
-import CustomAxios from '../utility/customAxios';
+import { login as loginAction } from '../store/actions/thunkActions/authentication';
 import { ROUTES } from '../resources/routes-constants';
 
 const LoginContainer = styled(Container)(({ theme }) => ({
@@ -44,7 +43,7 @@ const SubmitButton = styled(Button)(({ theme }) => ({
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
 
     const [login, setLogin] = useState('');
     const [password, setPassword] = useState('');
@@ -54,7 +53,7 @@ const LoginPage: React.FC = () => {
     const [passwordError, setPasswordError] = useState('');
 
     // Check if user is already authenticated
-    const authData = useSelector((state: authenticationData) => state);
+    const authData = useAppSelector((state) => state.authentication);
 
     useEffect(() => {
         // If user is already authenticated, redirect to homepage
@@ -94,26 +93,10 @@ const LoginPage: React.FC = () => {
         setError('');
 
         try {
-            // Replace with your actual API endpoint
-            const response = await CustomAxios.post('/api/authentication/login', {
+            await dispatch(loginAction({
                 login,
                 password
-            });
-
-            const authData: authenticationData = {
-                userId: response.data.userId,
-                login: response.data.login,
-                userName: response.data.userName,
-                giveinPlaceId: response.data.giveinPlaceId,
-                accessToken: response.data.accessToken,
-                refreshToken: response.data.refreshToken,
-                expirationTime: new Date(response.data.expirationTime),
-                idleTimeout: response.data.idleTimeout,
-                errorFields: [],
-                error: ''
-            };
-
-            dispatch(setAuthentication(authData));
+            }));
             navigate(ROUTES.HOMEPAGE_ROUTE);
         } catch (err: unknown) {
             if (err && typeof err === 'object' && 'response' in err) {
