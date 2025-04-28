@@ -7,7 +7,6 @@ import logoSrc from './images/logo-removebg.png'
 
 import { useAppSelector } from '../store/reducers/store';
 //import { login } from '../store/actions/authentication'
-import { RootState } from '../store/reducers/store'
 
 const HeaderHeightStyled = styled('div')(({ theme }) => ({
     height: theme.mixins.toolbar.minHeight,

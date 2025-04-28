@@ -13,4 +13,4 @@ export interface authenticationData {
     error: string
 }
 
-export const setAuthentication = createAction<authenticationData>('authentication/setAuthentication')
+export const setAuthentication = createAction<authenticationData | null>('authentication/setAuthentication')

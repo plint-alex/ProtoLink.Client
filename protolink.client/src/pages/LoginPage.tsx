@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAppDispatch, useAppSelector } from '../store/reducers/store';
 import {
@@ -14,6 +14,9 @@ import {
 import { styled } from '@mui/material/styles';
 import { login as loginAction } from '../store/actions/thunkActions/authentication';
 import { ROUTES } from '../resources/routes-constants';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 
 const LoginContainer = styled(Container)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -41,61 +44,41 @@ const SubmitButton = styled(Button)(({ theme }) => ({
     margin: theme.spacing(3, 0, 2),
 }));
 
+interface LoginFormData {
+    login: string;
+    password: string;
+}
+
+const schema = yup.object().shape({
+    login: yup.string().required('Login is required'),
+    password: yup.string().required('Password is required'),
+});
+
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
-
-    const [login, setLogin] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [loginError, setLoginError] = useState('');
-    const [passwordError, setPasswordError] = useState('');
-
-    // Check if user is already authenticated
     const authData = useAppSelector((state) => state.authentication);
 
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+        setError,
+    } = useForm<LoginFormData>({
+        resolver: yupResolver(schema),
+    });
+
     useEffect(() => {
-        // If user is already authenticated, redirect to homepage
         if (authData.accessToken) {
             navigate(ROUTES.HOMEPAGE_ROUTE);
         }
     }, [authData, navigate]);
 
-    const validateForm = () => {
-        let isValid = true;
-
-        if (!login.trim()) {
-            setLoginError('Login is required');
-            isValid = false;
-        } else {
-            setLoginError('');
-        }
-
-        if (!password) {
-            setPasswordError('Password is required');
-            isValid = false;
-        } else {
-            setPasswordError('');
-        }
-
-        return isValid;
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
-
-        setLoading(true);
-        setError('');
-
+    const onSubmit = async (data: LoginFormData) => {
         try {
             await dispatch(loginAction({
-                login,
-                password
+                login: data.login,
+                password: data.password
             }));
             navigate(ROUTES.HOMEPAGE_ROUTE);
         } catch (err: unknown) {
@@ -103,16 +86,23 @@ const LoginPage: React.FC = () => {
                 const axiosError = err as { response?: { data?: { errorFields?: unknown; error?: string } } };
                 if (axiosError.response?.data) {
                     if (axiosError.response.data.errorFields) {
-                        setError('Please check your credentials');
+                        setError('root', {
+                            type: 'manual',
+                            message: 'Please check your credentials'
+                        });
                     } else {
-                        setError(axiosError.response.data.error || 'An error occurred during login');
+                        setError('root', {
+                            type: 'manual',
+                            message: axiosError.response.data.error || 'An error occurred during login'
+                        });
                     }
                 }
             } else {
-                setError('Network error. Please try again later.');
+                setError('root', {
+                    type: 'manual',
+                    message: 'Network error. Please try again later.'
+                });
             }
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -123,13 +113,13 @@ const LoginPage: React.FC = () => {
                     Sign in
                 </Typography>
 
-                {error && (
+                {errors.root && (
                     <Alert severity="error" sx={{ mt: 2, width: '100%' }}>
-                        {error}
+                        {errors.root.message}
                     </Alert>
                 )}
 
-                <LoginForm onSubmit={handleSubmit} noValidate>
+                <LoginForm onSubmit={handleSubmit(onSubmit)} noValidate>
                     <TextField
                         variant="outlined"
                         margin="normal"
@@ -137,14 +127,12 @@ const LoginPage: React.FC = () => {
                         fullWidth
                         id="login"
                         label="Login"
-                        name="login"
                         autoComplete="username"
                         autoFocus
-                        value={login}
-                        onChange={(e) => setLogin(e.target.value)}
-                        error={!!loginError}
-                        helperText={loginError}
-                        disabled={loading}
+                        disabled={isSubmitting}
+                        error={!!errors.login}
+                        helperText={errors.login?.message}
+                        {...register('login')}
                     />
 
                     <TextField
@@ -152,16 +140,14 @@ const LoginPage: React.FC = () => {
                         margin="normal"
                         required
                         fullWidth
-                        name="password"
                         label="Password"
                         type="password"
                         id="password"
                         autoComplete="current-password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        error={!!passwordError}
-                        helperText={passwordError}
-                        disabled={loading}
+                        disabled={isSubmitting}
+                        error={!!errors.password}
+                        helperText={errors.password?.message}
+                        {...register('password')}
                     />
 
                     <SubmitButton
@@ -169,21 +155,20 @@ const LoginPage: React.FC = () => {
                         fullWidth
                         variant="contained"
                         color="primary"
-                        disabled={loading}
+                        disabled={isSubmitting}
                     >
-                        {loading ? <CircularProgress size={24} /> : 'Sign In'}
+                        {isSubmitting ? <CircularProgress size={24} /> : 'Sign In'}
                     </SubmitButton>
 
                     <Grid container spacing={2}>
-                        
-                            <Button
-                                variant="text"
-                                color="primary"
-                                onClick={() => navigate(ROUTES.HOMEPAGE_ROUTE)}
-                                disabled={loading}
-                            >
-                                Back to Home
-                            </Button>
+                        <Button
+                            variant="text"
+                            color="primary"
+                            onClick={() => navigate(ROUTES.HOMEPAGE_ROUTE)}
+                            disabled={isSubmitting}
+                        >
+                            Back to Home
+                        </Button>
                     </Grid>
                 </LoginForm>
             </LoginPaper>
