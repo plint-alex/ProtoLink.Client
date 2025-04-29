@@ -130,7 +130,7 @@ const HomePage: React.FC = () => {
                     <LoginStyled>
                         <RightTabAStyled href={`http://protolink.ru/scalar`} target="_blank">API</RightTabAStyled>
                         {authentication.accessToken && <RightTabSpanStyled>{authentication.userName}</RightTabSpanStyled>}
-                        <RightTabLinkStyled to={`/Explorer/'}${location.search ? `?${adminParams}` : ''}`} >Explorer</RightTabLinkStyled>
+                        <RightTabLinkStyled to={`/Explorer${location.search ? `?${adminParams}` : ''}`} >Explorer</RightTabLinkStyled>
                         {!authentication.accessToken && <RightTabLinkStyled to={`/login/?${loginParams.toString()}`}>Login</RightTabLinkStyled>}
                         {authentication.accessToken && <RightTabButtonStyled onClick={() => { }}>Logout</RightTabButtonStyled>}
                     </LoginStyled>

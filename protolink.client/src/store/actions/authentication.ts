@@ -7,7 +7,7 @@ export interface authenticationData {
     giveinPlaceId: number
     accessToken: string
     refreshToken: string
-    expirationTime: Date
+    expirationTime: string // ISO string format
     idleTimeout: number
     errorFields: { key: string, value: string }[]
     error: string

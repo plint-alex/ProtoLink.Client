@@ -2,10 +2,12 @@ import { ThunkDispatch, UnknownAction, combineReducers, configureStore } from '@
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist'
 import storage from 'redux-persist/lib/storage' // defaults to localStorage
 import authentication from './authentication'
+import entities from '../entitiesSlice'
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 
 const rootReducer = combineReducers({
-    authentication
+    authentication,
+    entities
 })
 
 const persistedReducer = persistReducer(

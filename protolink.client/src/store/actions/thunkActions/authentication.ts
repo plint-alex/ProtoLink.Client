@@ -34,7 +34,7 @@ export const login = createAsyncThunk<void, LoginCredentials, { dispatch: AppDis
                 giveinPlaceId: response.data.giveinPlaceId,
                 accessToken: response.data.accessToken,
                 refreshToken: response.data.refreshToken,
-                expirationTime: new Date(response.data.expirationTime),
+                expirationTime: new Date(response.data.expirationTime).toISOString(),
                 idleTimeout: response.data.idleTimeout,
                 errorFields: [],
                 error: response.data.error || ''
@@ -73,7 +73,7 @@ export const refreshToken = createAsyncThunk<void, RefreshTokenCredentials, { di
                     giveinPlaceId: response.data.giveinPlaceId,
                     accessToken: response.data.accessToken,
                     refreshToken: response.data.refreshToken,
-                    expirationTime: new Date(response.data.expirationTime),
+                    expirationTime: new Date(response.data.expirationTime).toISOString(),
                     idleTimeout: response.data.idleTimeout,
                     errorFields: [],
                     error: ''

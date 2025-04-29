@@ -8,7 +8,7 @@ const initialState: authenticationData = {
     giveinPlaceId: 0,
     accessToken: '',
     refreshToken: '',
-    expirationTime: new Date(),
+    expirationTime: new Date().toISOString(),
     idleTimeout: 0,
     errorFields: [],
     error: ''
@@ -16,7 +16,6 @@ const initialState: authenticationData = {
 
 const authenticationReducer = createReducer<authenticationData>(initialState, (builder) => {
     builder.addCase(setAuthentication, (state, action) => {
-
         if (action.payload) {
             state.userId = action.payload.userId
             state.login = action.payload.login
