@@ -1,6 +1,7 @@
-//import axios from 'axios'
-
-//const CustomAxios = axios.create()
+import axios from 'axios'
+import { getStoredState } from 'redux-persist'
+import { persistConfig, RootState } from '../store/store';
+const CustomAxios = axios.create()
 
 //const toCamelCase: any = (object: any) => {
 //    let transformedObject = object
@@ -42,24 +43,31 @@
 //    return transformedObject
 //}
 
-//CustomAxios.interceptors.response.use(
-//    (response) => {
-//        response.data = toCamelCase(response.data)
-//        return response
-//    },
-//    (error) => {
-//        return Promise.reject(error)
-//    }
-//)
+CustomAxios.interceptors.response.use(
+    (response) => {
+        //response.data = toCamelCase(response.data)
+        return response
+    },
+    (error) => {
+        if (error.response.status === 401) {
+            window.location.href = `/login?logout&returnurl=${window.location.href}`
+        } else {
+            return Promise.reject(error)
+        }
+    }
+)
 
-//CustomAxios.interceptors.request.use(
-//    (config) => {
-//        config.data = toSnackCase(config.data)
-//        return config
-//    },
-//    (error) => {
-//        return Promise.reject(error)
-//    }
-//)
+CustomAxios.interceptors.request.use(
+    async (config) => {
+        const state = await getStoredState(persistConfig) as RootState
+                //config.data = toSnackCase(config.data)
+        config.headers.Authorization = 'Bearer ' + state?.authentication?.accessToken
+        return config
+    },
+    (error) => {
+        console.error(error)
+        return Promise.reject(error)
+    }
+)
 
-//export default CustomAxios
+export default CustomAxios

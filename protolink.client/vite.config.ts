@@ -54,7 +54,19 @@ export default defineConfig({
                 target,
                 changeOrigin: true,
                 secure: false,
-                rewrite: path => path.replace(/^\//, '')
+                rewrite: path => path.replace(/^\//, ''),
+                configure: (proxy) => {
+                    proxy.on('error', (err) => {
+                        console.log(target);
+                        console.log('proxy error', err);
+                    });
+                    proxy.on('proxyReq', (_, req) => {
+                        console.log(req.method, `${target}${req.url}`);
+                    });
+                    proxy.on('proxyRes', (proxyRes, req) => {
+                        console.log(proxyRes.statusCode, req.url);
+                    });
+                }
             },
             '^/scalar': {
                 target,

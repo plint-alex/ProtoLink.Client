@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { useAppDispatch, useAppSelector } from '../store/reducers/store';
+import { useLocation, useNavigate, useParams } from 'react-router';
+import { useAppDispatch, useAppSelector } from '../store/store';
 import {
     Button,
     TextField,
@@ -56,6 +56,7 @@ const schema = yup.object().shape({
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
+    const localLocation = useLocation();
     const dispatch = useAppDispatch();
     const authData = useAppSelector((state) => state.authentication);
 
@@ -69,8 +70,15 @@ const LoginPage: React.FC = () => {
     });
 
     useEffect(() => {
-        if (authData.accessToken) {
-            navigate(ROUTES.HOMEPAGE_ROUTE);
+        const queryString = new URLSearchParams(localLocation.search)
+        const logout = queryString.get('logout')
+        queryString.delete('logout');
+        const returnurl = queryString.get('returnurl') 
+        if (authData.accessToken && logout === null) {
+            if (returnurl)
+                location.href = returnurl;
+            else
+                navigate(ROUTES.HOMEPAGE_ROUTE);
         }
     }, [authData, navigate]);
 

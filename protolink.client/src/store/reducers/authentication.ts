@@ -28,7 +28,16 @@ const authenticationReducer = createReducer<authenticationData>(initialState, (b
             state.errorFields = action.payload.errorFields
             state.error = action.payload.error
         } else {
-            state = initialState;
+            state.userId = initialState.userId
+            state.login = initialState.login
+            state.userName = initialState.userName
+            state.giveinPlaceId = initialState.giveinPlaceId
+            state.accessToken = initialState.accessToken
+            state.refreshToken = initialState.refreshToken
+            state.expirationTime = initialState.expirationTime
+            state.idleTimeout = initialState.idleTimeout
+            state.errorFields = initialState.errorFields
+            state.error = initialState.error
         }
     })
 })

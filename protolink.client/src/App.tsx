@@ -2,7 +2,7 @@ import React from 'react'
 import { Provider } from 'react-redux'
 import { PersistGate } from 'redux-persist/integration/react'
 import RootComponent from './RootComponent'
-import { persistor, store } from './store/reducers/store'
+import { persistor, store } from './store/store'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 
 const theme = createTheme({
@@ -21,6 +21,7 @@ const theme = createTheme({
 
 
 const App: React.FC = () => {
+
     return (
         <ThemeProvider theme={theme}>
             <Provider store={store}>

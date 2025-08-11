@@ -5,7 +5,7 @@ import LoginPage from './pages/LoginPage'
 import { Layout } from './components/Layout'
 import NotFoundPage from './pages/NotFoundPage'
 import { ROUTES } from './resources/routes-constants'
-import AdminPage from './components/pages/AdminPage/AdminPage'
+import AdminPage from './pages/AdminPage/AdminPage'
 
 const RootComponent: React.FC = () => {
     return (
@@ -14,7 +14,9 @@ const RootComponent: React.FC = () => {
                 <Routes>
                     <Route path="*" element={<NotFoundPage />} />
                     <Route path={ROUTES.HOMEPAGE_ROUTE} element={<HomePage />} />
+                    <Route path={ROUTES.HOMEPAGE_ROUTE + '/:id'} element={<HomePage />} />
                     <Route path={ROUTES.EXPLORER_ROUTE} element={<AdminPage />} />
+                    <Route path={ROUTES.EXPLORER_ROUTE + '/:id'} element={<AdminPage />} />
                     <Route path={ROUTES.LOGIN_ROUTE} element={<LoginPage />} />
                 </Routes>
             </Router>

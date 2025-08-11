@@ -1,11 +1,16 @@
-﻿import React from 'react'
-import { Link } from 'react-router'
+﻿import React, { useEffect, useMemo } from 'react'
+import { Link, useNavigate, useParams } from 'react-router'
 import { AppBar, Toolbar, InputBase, Button, CssBaseline } from '@mui/material'
 import { alpha, styled } from '@mui/material/styles'
 import { Search } from '@mui/icons-material'
 import logoSrc from './images/logo-removebg.png'
 
-import { useAppSelector } from '../store/reducers/store';
+import { useAppSelector, useAppDispatch, RootState } from '../store/store'
+import { loadViewScript } from '../store/actions/thunkActions/entities'
+import { logout as logoutAction } from '../store/actions/thunkActions/authentication'
+import { useSelector } from 'react-redux'
+import { Dictionary } from '../types/dictionary'
+import { DynamicReactElement } from '../types/dynamicReactElement'
 //import { login } from '../store/actions/authentication'
 
 const HeaderHeightStyled = styled('div')(({ theme }) => ({
@@ -100,15 +105,61 @@ const RightTabButtonStyled = styled(Button)(({ theme }) => ({
 
 const HomePage: React.FC = () => {
     const authentication = useAppSelector((state) => state.authentication)
+    const dispatch = useAppDispatch()
+    const navigate = useNavigate()
+    const params = useParams()
 
-    const search = location.search;
-    const queryString = new URLSearchParams(search);
-    const adminParams = queryString;
 
-    const lang = queryString.get('lang');
-    const loginParams = new URLSearchParams(`?lang=${lang}&returnUrl=${location.pathname + location.search}`);
 
-    adminParams.delete('lang');
+
+    const entities = useSelector((state: RootState) => state.entities)
+    const entityViews = entities?.entityViews
+    const entityId = params.id
+
+    const windowLocal = window as Dictionary<keyof JSX.IntrinsicElements & DynamicReactElement> & Window & typeof globalThis
+
+    const TagName = entityId && entityViews && entityViews[entityId] && entityViews[entityId][0]?.viewId && windowLocal[entityViews[entityId][0].viewId]
+
+    const realEntityId = entityId && ((entityViews && entityViews[entityId] && entityViews[entityId][0].entityId) || entityId)
+
+    const search = location.search
+    const queryString = useMemo(() => { return new URLSearchParams(search) }, [search])
+    const adminParams = queryString
+
+    let lang = queryString.get('lang');
+    const loginParams = new URLSearchParams(`?lang=${lang}&returnUrl=${location.pathname + location.search}`)
+
+
+    //adminParams.delete('lang');
+
+    let pathname = location.pathname;
+
+    let redirectLocal = false;
+
+    if (!params.id && authentication.accessToken) {
+        pathname = `${authentication.userId}`
+        redirectLocal = true;
+    }
+
+    if (!lang) {
+
+        queryString.set('lang', navigator.language)
+        lang = navigator.language
+        redirectLocal = true
+    }
+
+    useEffect(() => {
+        if (redirectLocal) {
+            navigate(pathname + '?' + queryString.toString())
+        }
+
+    }, [redirectLocal, navigate, pathname, queryString])
+
+    useEffect(() => {
+        if (params.id) {
+            dispatch(loadViewScript(params.id));
+        }
+    }, [params.id, dispatch]);
 
     return (
         <>
@@ -128,16 +179,17 @@ const HomePage: React.FC = () => {
                         />
                     </SearchStyled>
                     <LoginStyled>
-                        <RightTabAStyled href={`http://protolink.ru/scalar`} target="_blank">API</RightTabAStyled>
                         {authentication.accessToken && <RightTabSpanStyled>{authentication.userName}</RightTabSpanStyled>}
-                        <RightTabLinkStyled to={`/Explorer${location.search ? `?${adminParams}` : ''}`} >Explorer</RightTabLinkStyled>
+                        <RightTabAStyled href={`http://protolink.ru/scalar`} target="_blank">API</RightTabAStyled>
+                        <RightTabLinkStyled to={`/explorer/${realEntityId ? realEntityId : ''}${location.search ? `?${adminParams}` : ''}`} >Explorer</RightTabLinkStyled>
                         {!authentication.accessToken && <RightTabLinkStyled to={`/login/?${loginParams.toString()}`}>Login</RightTabLinkStyled>}
-                        {authentication.accessToken && <RightTabButtonStyled onClick={() => { }}>Logout</RightTabButtonStyled>}
+                        {authentication.accessToken && <RightTabButtonStyled onClick={async () => {await dispatch(logoutAction())}}>Logout</RightTabButtonStyled>}
                     </LoginStyled>
                 </Toolbar>
             </AppBarStyled>
             <HeaderHeightStyled />
             <CssBaseline />
+            {TagName && realEntityId && <TagName level={0} entityId={realEntityId} entityViews={entityViews[realEntityId]} />}
         </>
     )
 }

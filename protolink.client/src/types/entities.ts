@@ -9,6 +9,7 @@ export interface Entity {
     code: string;
     values: EntityValue[];
     viewIds: string[];
+    viewId: string;
     mainParentId?: string;
     name?: string;
     description?: string;

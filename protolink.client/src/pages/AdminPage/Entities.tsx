@@ -1,17 +1,15 @@
 import * as React from 'react';
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { Grid, Paper, Button, TextField, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
+//import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { styled } from '@mui/material/styles';
-import { useAppDispatch } from '../../../store/reducers/store';
-import { getEntities, deleteEntity, addParent, addEntityAndSelect } from '../../../store/actions/thunkActions/entities';
-import type { RootState } from '../../../store';
-import type { Entity } from '../../../types/entities';
+import { selectEntities, useAppDispatch, useAppSelector } from '../../store/store';
+import { getEntities, deleteEntity, addParent, addEntityAndSelect } from '../../store/actions/thunkActions/entities';
+import type { Entity } from '../../types/entities';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -57,26 +55,17 @@ const Entities: React.FC = () => {
     const dispatch = useAppDispatch();
     const [parentIdToAdd, setParentIdToAdd] = React.useState<string>('');
 
-    const entities = useSelector((state: RootState) => {
-        console.log('Entities state:', state.entities);
-        return Array.isArray(state.entities.entities) ? state.entities.entities : [];
-    });
-    console.log('Processed entities:', entities);
-    const children = entities.filter((e: Entity) => e.mainParentId === id);
-    const parents = entities.filter((e: Entity) => e.id === id ? e.mainParentId : false);
-
-    useEffect(() => {
-        load(id);
-    }, [id]);
-
-    const load = (entityId: string | undefined) => {
+    const load = React.useCallback((entityId: string | undefined) => {
         if (entityId) {
-            dispatch(getEntities({ parentIds: [entityId] }));
-            dispatch(getEntities({ idsToFindParents: [entityId] }));
+            dispatch(getEntities({ data: entityId ? { parentIds: [entityId] } : {}, storageVariable: 'children'}));
+            dispatch(getEntities({ data: { idsToFindParents: [entityId] }, storageVariable: 'parents' }));
         } else {
-            dispatch(getEntities({}));
+            dispatch(getEntities({ data: {}, storageVariable: 'children' }));
         }
-    };
+    }, [dispatch]);
+
+    const children = useAppSelector((state) => selectEntities(state, 'children'));
+    const parents = useAppSelector((state) => selectEntities(state, 'parents'));
 
     const handleParentIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setParentIdToAdd(e.target.value);
@@ -93,23 +82,29 @@ const Entities: React.FC = () => {
         dispatch(deleteEntity({ id: entityId }));
     };
 
-    const handleAddEntity = () => {
-        if (id) {
-            dispatch(addEntityAndSelect({
-                name: '',
-                description: '',
-                code: '',
-                codeIsUnique: false,
-                order: 0,
-                parentIds: id,
-                hidden: false
-            }));
+    const handleAddEntity = async (entityId?: string) => {
+        const result = await dispatch(addEntityAndSelect({
+            name: '',
+            description: '',
+            code: '',
+            codeIsUnique: false,
+            order: 0,
+            parentIds: entityId? [entityId]: [],
+            hidden: false
+        }));
+
+        if (result.payload) {
+            handleNavigate((result.payload as { id: string }).id);
         }
     };
 
     const handleNavigate = (entityId: string) => {
-        navigate(`/admin/${entityId}`);
+        navigate(`/explorer/${entityId}`);
     };
+
+    useEffect(() => {
+        load(id);
+    }, [id, load]);
 
     return (
         <Grid container spacing={3}>
@@ -143,7 +138,7 @@ const Entities: React.FC = () => {
                                     </Tooltip>
                                 </td>
                             </tr>
-                            {!id && (
+                            {(!parents || !parents[0]) && (
                                 <tr>
                                     <td colSpan={2}>
                                         <Button
@@ -151,14 +146,14 @@ const Entities: React.FC = () => {
                                             fullWidth
                                             variant="contained"
                                             color="primary"
-                                            onClick={() => navigate('/admin')}
+                                            onClick={() => navigate('/explorer')}
                                         >
                                             Go to root
                                         </Button>
                                     </td>
                                 </tr>
                             )}
-                            {parents.map((entity: Entity) => (
+                            {parents && parents.map((entity: Entity) => (
                                 <StyledItem key={entity.id}>
                                     <StyledAction onClick={() => handleNavigate(entity.id)}>
                                         {entity.code}
@@ -166,11 +161,11 @@ const Entities: React.FC = () => {
                                     <td>
                                         <StyledHiddenAction>
                                             <Tooltip title={`Copy ${entity.id}`}>
-                                                <CopyToClipboard text={entity.id}>
+                                                {/*<CopyToClipboard text={entity.id}>*/}
                                                     <IconButton size="small" aria-label="CopyEntityId">
                                                         <FileCopyIcon />
                                                     </IconButton>
-                                                </CopyToClipboard>
+                                                {/*</CopyToClipboard>*/}
                                             </Tooltip>
                                             <Tooltip title="Remove entity">
                                                 <IconButton
@@ -212,11 +207,11 @@ const Entities: React.FC = () => {
                                     <td>
                                         <StyledHiddenAction>
                                             <Tooltip title={`Copy ${entity.id}`}>
-                                                <CopyToClipboard text={entity.id}>
+                                                {/*<CopyToClipboard text={entity.id}>*/}
                                                     <IconButton size="small" aria-label="CopyEntityId">
                                                         <FileCopyIcon />
                                                     </IconButton>
-                                                </CopyToClipboard>
+                                               {/* </CopyToClipboard>*/}
                                             </Tooltip>
                                             <Tooltip title="Remove entity">
                                                 <IconButton
@@ -237,7 +232,7 @@ const Entities: React.FC = () => {
                         type="button"
                         variant="contained"
                         color="primary"
-                        onClick={handleAddEntity}
+                        onClick={() => handleAddEntity(id)}
                     >
                         Add entity
                     </Button>
@@ -247,4 +242,4 @@ const Entities: React.FC = () => {
     );
 };
 
-export default Entities; 
+export default Entities;

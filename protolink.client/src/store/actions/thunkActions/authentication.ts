@@ -1,7 +1,8 @@
-import axios from 'axios'
+import axios from '../../../utility/customAxios'
 import { createAsyncThunk } from '@reduxjs/toolkit'
-import { AppDispatch } from '../../reducers/store'
+import { AppDispatch, RootState } from '../../reducers/store'
 import { setAuthentication, authenticationData } from '../authentication'
+import { getCommonAxiosConfig } from '../../../utility/commonAxiosConfig'
 
 export interface LoginCredentials {
     login: string
@@ -47,12 +48,13 @@ export const login = createAsyncThunk<void, LoginCredentials, { dispatch: AppDis
     }
 )
 
-export const logout = createAsyncThunk<void, void, { dispatch: AppDispatch }>(
+export const logout = createAsyncThunk<void, void, { dispatch: AppDispatch, state: RootState }>(
     'authentication/logout',
-    async (_, { dispatch }) => {
+    async (_, { dispatch/*, getState */}) => {
         try {
-            await axios.post(`/api/authentication/logout`)
+            //const axiosConfig = getCommonAxiosConfig(getState)
             dispatch(setAuthentication(null))
+            await axios.post(`/api/authentication/logout`, {})
         } catch (e) {
             console.error(e)
             throw e
@@ -60,11 +62,12 @@ export const logout = createAsyncThunk<void, void, { dispatch: AppDispatch }>(
     }
 )
 
-export const refreshToken = createAsyncThunk<void, RefreshTokenCredentials, { dispatch: AppDispatch }>(
+export const refreshToken = createAsyncThunk<void, RefreshTokenCredentials, { dispatch: AppDispatch, state: RootState }>(
     'authentication/refreshToken',
-    async ({ accessToken, refreshToken }, { dispatch }) => {
+    async ({ accessToken, refreshToken }, { dispatch, getState }) => {
         try {
-            const response = await axios.post(`/api/authentication/refreshtoken`, { accessToken, refreshToken })
+            const axiosConfig = getCommonAxiosConfig(getState)
+            const response = await axios.post(`/api/authentication/refreshtoken`, { accessToken, refreshToken }, axiosConfig)
             if (response.data) {
                 const authData: authenticationData = {
                     userId: response.data.userId,
@@ -87,7 +90,7 @@ export const refreshToken = createAsyncThunk<void, RefreshTokenCredentials, { di
     }
 )
 
-export const register = createAsyncThunk<void, { credentials: RegisterCredentials; lang: string }, { dispatch: AppDispatch }>(
+export const register = createAsyncThunk<void, { credentials: RegisterCredentials; lang: string }>(
     'authentication/register',
     async ({ credentials, lang }) => {
         try {
