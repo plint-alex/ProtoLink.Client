@@ -4,6 +4,32 @@ import { PersistGate } from 'redux-persist/integration/react'
 import RootComponent from './RootComponent'
 import { persistor, store } from './store/store'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { Container, Button, InputAdornment, IconButton } from '@mui/material'
+
+// Expose limited globals for dynamic views
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const w = window as any;
+if (!w.react) {
+    w['react'] = React;
+    // Map commonly used MUI components to legacy-like keys
+    w['@material-ui/core/Container'] = Container;
+    w['@material-ui/core/Button'] = Button;
+    w['@material-ui/core/InputAdornment'] = InputAdornment;
+    w['@material-ui/core/IconButton'] = IconButton;
+
+    // Minimal internal helpers that dynamic views can use
+    w['internal'] = {
+        apiRequest: async (path: string, method: string, body?: unknown) => {
+            const res = await fetch(`/api/${path}`.replace(/\/+/, '/'), {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: body ? JSON.stringify(body) : undefined,
+            });
+            if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
+            return res.json();
+        },
+    };
+}
 
 const theme = createTheme({
     mixins: {
@@ -21,6 +47,13 @@ const theme = createTheme({
 
 
 const App: React.FC = () => {
+    // Minimal debug visibility on page
+    if (typeof window !== 'undefined') {
+        // eslint-disable-next-line no-console
+        console.log('[App] mount', {
+            location: window.location.href,
+        })
+    }
 
     return (
         <ThemeProvider theme={theme}>

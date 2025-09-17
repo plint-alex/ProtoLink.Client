@@ -38,7 +38,7 @@ export const addFile = createAsyncThunk<{ Success: string }, AddFileParams>(
             formData.append('fileId', fileId)
             formData.append('file', file)
 
-            const response = await axios.post('/api/files/addFile', formData, {
+            const response = await axios.post('/api/Files/addFile', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
@@ -55,7 +55,7 @@ export const getFile = createAsyncThunk<Blob, GetFileParams>(
     'files/getFile',
     async ({ id, fileName }) => {
         try {
-            const response = await axios.get(`/api/files/getFile/${id}${fileName ? `/${fileName}` : ''}`, {
+            const response = await axios.get(`/api/Files/getFile/${id}${fileName ? `/${fileName}` : ''}`, {
                 responseType: 'blob'
             })
             return response.data
@@ -70,7 +70,12 @@ export const getFiles = createAsyncThunk<FileResult[], GetFilesParams>(
     'files/getFiles',
     async (params) => {
         try {
-            const response = await axios.post('/api/files/getFiles', params)
+            const payload = {
+                entityIds: params?.entityIds ?? [],
+                ids: params?.ids ?? [],
+                types: params?.types ?? []
+            }
+            const response = await axios.post('/api/Files/getFiles', payload)
             return response.data
         } catch (e) {
             console.error(e)
@@ -83,7 +88,7 @@ export const deleteFile = createAsyncThunk<{ Success: string }, DeleteFileParams
     'files/deleteFile',
     async ({ fileId }) => {
         try {
-            const response = await axios.post('/api/files/deleteFile', { fileId })
+            const response = await axios.post('/api/Files/deleteFile', { fileId })
             return response.data
         } catch (e) {
             console.error(e)

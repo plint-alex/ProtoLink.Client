@@ -268,16 +268,76 @@ export const loadViewScript = createAsyncThunk<{ entityId: string, entityViews: 
             const response = await axios.get<ViewData>(`${baseUrl}getView/${entityId}`);
             const viewData = response.data;
 
-            // Create and execute the script
-            const script = document.createElement('script')
-            script.text = viewData?.scripts
-            try {
-                //eval(viewData.scripts);
-                document.body.appendChild(script)
-            }
-            catch (e) {
+            // Ensure JSX scripts are executable in the browser by transpiling with Babel standalone when needed
+            const ensureBabelLoaded = async () => {
+                if ((window as any).Babel) return;
+                await new Promise<void>((resolve, reject) => {
+                    const babelScript = document.createElement('script');
+                    babelScript.src = 'https://unpkg.com/@babel/standalone/babel.min.js';
+                    babelScript.async = true;
+                    babelScript.onload = () => resolve();
+                    babelScript.onerror = () => reject(new Error('Failed to load Babel standalone'));
+                    document.head.appendChild(babelScript);
+                });
+            };
 
-                console.error(e);
+            const executeViewScript = async (rawCode: string) => {
+                // 1) Sanitize: strip ESM imports/exports which are not supported in injected scripts
+                let sanitized = rawCode
+                    .replace(/^\s*import\s+[^;]+;?\s*$/gm, '')
+                    .replace(/^\s*export\s+default\s+/gm, '')
+                    .replace(/^\s*export\s+\{[^}]*\};?\s*$/gm, '')
+                    // Avoid duplicate React/ReactDOM declarations from dynamic scripts
+                    .replace(/^\s*(?:var|let|const)\s+React\s*=.*$/gm, '')
+                    .replace(/^\s*(?:var|let|const)\s+ReactDOM\s*=.*$/gm, '');
+
+                // Extra cleanup: inline/combined declarations e.g., "const React = window.React, ReactDOM = window.ReactDOM;"
+                sanitized = sanitized
+                    .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+React\s*=[^,;]*,\s*ReactDOM\s*=[^;]*;?/g, ';')
+                    .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+ReactDOM\s*=[^;]*;?/g, ';')
+                    .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+React\s*=[^;]*;?/g, ';');
+
+                // 2) If it looks like JSX, transpile with Babel at runtime
+                let executableCode = sanitized;
+                const probablyJsx = /return\s*\(\s*<|React\.createElement\(/.test(sanitized);
+                if (probablyJsx) {
+                    await ensureBabelLoaded();
+                    const Babel: any = (window as any).Babel;
+                    try {
+                        const transformed = Babel.transform(sanitized, {
+                            presets: ['react'],
+                            sourceType: 'script'
+                        });
+                        executableCode = transformed.code ?? sanitized;
+                    } catch (transformError) {
+                        console.error('[loadViewScript] JSX transform failed', transformError);
+                        throw transformError;
+                    }
+                }
+
+                // 3) Wrap into an IIFE with explicit globals to avoid redeclaration errors
+                const wrapped = `;(function (global) {\n` +
+                    `  try {\n` +
+                    `    var React = global.React;\n` +
+                    `    var ReactDOM = global.ReactDOM;\n` +
+                    `    var window = global;\n` +
+                    `    var document = global.document;\n` +
+                    `    ${executableCode}\n` +
+                    `  } catch (e) {\n` +
+                    `    console.error('[loadViewScript] script runtime error', e);\n` +
+                    `  }\n` +
+                    `}).call(window, window);`;
+
+                const script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.text = wrapped;
+                document.body.appendChild(script);
+            };
+
+            try {
+                await executeViewScript(viewData?.scripts ?? '');
+            } catch (e) {
+                console.error('[loadViewScript] script execution error', e);
             }
 
             return { entityId, entityViews: viewData.entityViews };

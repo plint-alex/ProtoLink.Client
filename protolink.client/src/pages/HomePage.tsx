@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AppBar, Toolbar, InputBase, Button, CssBaseline } from '@mui/material'
 import { alpha, styled } from '@mui/material/styles'
 import { Search } from '@mui/icons-material'
@@ -181,7 +181,7 @@ const HomePage: React.FC = () => {
                     <LoginStyled>
                         {authentication.accessToken && <RightTabSpanStyled>{authentication.userName}</RightTabSpanStyled>}
                         <RightTabAStyled href={`http://protolink.ru/scalar`} target="_blank">API</RightTabAStyled>
-                        <RightTabLinkStyled to={`/explorer/${realEntityId ? realEntityId : ''}${location.search ? `?${adminParams}` : ''}`} >Explorer</RightTabLinkStyled>
+                        <RightTabLinkStyled to={`/explorer/${realEntityId ? realEntityId : ''}${location.search ? `?${adminParams.toString()}` : ''}`} >Explorer</RightTabLinkStyled>
                         {!authentication.accessToken && <RightTabLinkStyled to={`/login/?${loginParams.toString()}`}>Login</RightTabLinkStyled>}
                         {authentication.accessToken && <RightTabButtonStyled onClick={async () => {await dispatch(logoutAction())}}>Logout</RightTabButtonStyled>}
                     </LoginStyled>

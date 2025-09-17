@@ -18,4 +18,5 @@ export interface Entity {
     parentIds?: string;
     hidden?: boolean;
     version?: number;
+    creationTime?: string;
 } 

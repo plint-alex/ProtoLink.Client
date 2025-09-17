@@ -1,6 +1,6 @@
 import axios from '../../../utility/customAxios'
 import { createAsyncThunk } from '@reduxjs/toolkit'
-import { AppDispatch, RootState } from '../../reducers/store'
+import { AppDispatch, RootState } from '../../store'
 import { setAuthentication, authenticationData } from '../authentication'
 import { getCommonAxiosConfig } from '../../../utility/commonAxiosConfig'
 

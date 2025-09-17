@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter as Router, Route, Routes } from 'react-router'
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import { Layout } from './components/Layout'
@@ -8,6 +8,12 @@ import { ROUTES } from './resources/routes-constants'
 import AdminPage from './pages/AdminPage/AdminPage'
 
 const RootComponent: React.FC = () => {
+    // rudimentary route debug
+    if (typeof window !== 'undefined') {
+        // eslint-disable-next-line no-console
+        console.log('[Router] at', window.location.pathname + window.location.search)
+    }
+
     return (
         <Layout name={'Layout'}>
             <Router>

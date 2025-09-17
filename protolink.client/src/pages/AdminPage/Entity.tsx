@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector, selectEntity } from '../../store/store';
 import { useParams } from 'react-router-dom';
 import { getEntity, updateEntity } from '../../store/actions/thunkActions/entities';
-import { Button, Grid, Paper, TextField, Typography, IconButton, Tooltip, Card, CardContent, Dialog, DialogTitle as MuiDialogTitle } from '@mui/material';
+import { Button, Grid, Paper, TextField, Typography, IconButton, Tooltip, Card, CardContent, Dialog, DialogTitle as MuiDialogTitle, Chip, Stack, Snackbar, Alert } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
 import { styled } from '@mui/material/styles';
-import File from './File';
 import Editor from './Editor';
+import File from './File';
 import type { EntityValue } from '../../types/entities';
 import { useFormik } from 'formik';
 import { Dictionary } from '../../types/dictionary';
@@ -44,29 +44,25 @@ const ParentsEditor: React.FC<ParentsEditorProps> = ({ parents, onAddParent, onR
     const [parentIdToAdd, setParentIdToAdd] = useState('');
     return (
         <>
-            {parents.map((parentId, idx) => (
-                <Grid key={idx} container spacing={0} alignItems="center">
-                    <Grid item xs={10} sm={10}>
-                        {parentId}
-                        <span style={{ marginLeft: 8 }}>
-                            {entities && entities[parentId] && entities[parentId].code}
-                        </span>
-                    </Grid>
-                    <Grid item xs={2} sm={2}>
-                        <Tooltip title="Remove value parent id">
-                            <IconButton size="small" aria-label="RemoveValueParentId" onClick={() => onRemoveParent(idx)}>
-                                <DeleteIcon />
-                            </IconButton>
-                        </Tooltip>
-                    </Grid>
-                </Grid>
-            ))}
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                {parents.map((parentId, idx) => (
+                    <Chip
+                        key={parentId + idx}
+                        label={entities && entities[parentId] ? `${entities[parentId].code} (${parentId})` : parentId}
+                        onDelete={() => onRemoveParent(idx)}
+                        size="small"
+                        color="default"
+                        variant="outlined"
+                    />
+                ))}
+            </Stack>
             <Grid container spacing={0} alignItems="center">
                 <Grid item xs={10} sm={10}>
                     <TextField
                         fullWidth
-                        label="Parent id to add"
+                        label="Add parent ID"
                         margin="none"
+                        placeholder="Enter parent entity id"
                         value={parentIdToAdd}
                         onChange={e => setParentIdToAdd(e.target.value)}
                     />
@@ -99,29 +95,25 @@ const ViewsEditor: React.FC<ViewsEditorProps> = ({ viewIds, onAddView, onRemoveV
     const [viewIdToAdd, setViewIdToAdd] = useState('');
     return (
         <>
-            {viewIds.map((viewId, idx) => (
-                <Grid key={idx} container spacing={0} alignItems="center">
-                    <Grid item xs={10} sm={10}>
-                        {viewId}
-                        <span style={{ marginLeft: 8 }}>
-                            {entities && entities[viewId] && entities[viewId].code}
-                        </span>
-                    </Grid>
-                    <Grid item xs={2} sm={2}>
-                        <Tooltip title="Remove view id">
-                            <IconButton size="small" aria-label="RemoveViewId" onClick={() => onRemoveView(idx)}>
-                                <DeleteIcon />
-                            </IconButton>
-                        </Tooltip>
-                    </Grid>
-                </Grid>
-            ))}
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                {viewIds.map((viewId, idx) => (
+                    <Chip
+                        key={viewId + idx}
+                        label={entities && entities[viewId] ? `${entities[viewId].code} (${viewId})` : viewId}
+                        onDelete={() => onRemoveView(idx)}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                    />
+                ))}
+            </Stack>
             <Grid container spacing={0} alignItems="center">
                 <Grid item xs={10} sm={10}>
                     <TextField
                         fullWidth
-                        label="ViewId to add"
+                        label="Add view ID"
                         margin="none"
+                        placeholder="Enter view entity id"
                         value={viewIdToAdd}
                         onChange={e => setViewIdToAdd(e.target.value)}
                     />
@@ -158,6 +150,7 @@ const EntityComponent: React.FC = () => {
         }
     }, [entityId, dispatch]);
 
+    const [saveOk, setSaveOk] = useState(false);
     const formik = useFormik({
         enableReinitialize: true,
         initialValues: {
@@ -171,8 +164,13 @@ const EntityComponent: React.FC = () => {
                 dispatch(updateEntity({
                     id: entityId,
                     code: values.code,
-                    // add other fields as needed
+                    parentIds: values.mainParentId ? [values.mainParentId] : undefined,
+                    codeIsUnique: undefined,
+                    order: undefined,
+                    hidden: undefined,
+                    version: entity?.version,
                 }) as any);
+                setSaveOk(true);
             }
         },
     });
@@ -209,8 +207,9 @@ const EntityComponent: React.FC = () => {
     }
 
     return (
+        <>
         <StyledPaper variant="outlined">
-            {/*<File entityId={entityId!} />*/}
+            {entityId && <File entityId={entityId} />}
             <form onSubmit={formik.handleSubmit}>
                 <Grid container spacing={5}>
                     <Grid item sm={12} lg={6}>
@@ -371,6 +370,12 @@ const EntityComponent: React.FC = () => {
                 <Editor value={dialogValue} onChange={handleEditorUpdate} />
             </Dialog>
         </StyledPaper>
+        <Snackbar open={saveOk} autoHideDuration={2000} onClose={() => setSaveOk(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+            <Alert onClose={() => setSaveOk(false)} severity="success" variant="filled" sx={{ width: '100%' }}>
+                Entity updated
+            </Alert>
+        </Snackbar>
+        </>
     );
 };
 

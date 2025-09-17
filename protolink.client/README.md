@@ -1,54 +1,52 @@
-# React + TypeScript + Vite
+## ProtoLink Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite frontend for ProtoLink.
 
-Currently, two official plugins are available:
+### Prerequisites
+- Node.js 20+
+- PNPM or NPM (examples below use npm)
+- .NET backend running and exposing `/api` (proxy is configured)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+### Install
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+### Development
+```bash
+npm run dev
 ```
+Dev server port is taken from `DEV_SERVER_PORT` env var (defaults to 57252). API calls to `/api/**` are proxied to the ASP.NET server discovered from `ASPNETCORE_HTTPS_PORT` or `ASPNETCORE_URLS`.
+
+### Build
+```bash
+npm run build
+```
+
+### Lint
+```bash
+npm run lint
+```
+
+### Environment
+Optional `.env` values used by `vite.config.ts`:
+```
+DEV_SERVER_PORT=57252
+ASPNETCORE_HTTPS_PORT=7001
+ASPNETCORE_URLS=https://localhost:7001;http://localhost:7000
+```
+
+### Auth and API
+- Auth token is read from persisted Redux state and added to `Authorization` header in `src/utility/customAxios.ts`.
+- Unauthenticated responses (401) redirect to `/login` with `returnurl`.
+
+### Routing
+`react-router-dom@7` is used. See `src/RootComponent.tsx` and `src/resources/routes-constants.ts`.
+
+### Useful scripts
+- `tools/create-demo.ps1` creates demo data against `http://localhost:5000/api` (adjust `$BaseUrl` if needed).
+
+### Project structure
+- `src/pages`: feature pages (Home, Admin, Login)
+- `src/store`: Redux Toolkit store, slices, and thunks
+- `src/utility`: axios setup and helpers

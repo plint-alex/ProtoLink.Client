@@ -37,8 +37,8 @@ if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
     }
 }
 
-const target = env.ASPNETCORE_HTTPS_PORT ? `https://localhost:${env.ASPNETCORE_HTTPS_PORT}` :
-    env.ASPNETCORE_URLS ? env.ASPNETCORE_URLS.split(';')[0] : 'http://localhost:80';
+// Force local API during dev to avoid accidental external URLs from env
+const target = 'http://localhost:5000';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -54,17 +54,19 @@ export default defineConfig({
                 target,
                 changeOrigin: true,
                 secure: false,
-                rewrite: path => path.replace(/^\//, ''),
                 configure: (proxy) => {
                     proxy.on('error', (err) => {
                         console.log(target);
                         console.log('proxy error', err);
+                        try { fs.appendFileSync('proxy.log', `[ERROR] target=${target} error=${err?.message || err}\n`); } catch {}
                     });
                     proxy.on('proxyReq', (_, req) => {
                         console.log(req.method, `${target}${req.url}`);
+                        try { fs.appendFileSync('proxy.log', `[REQ] ${req.method} ${target}${req.url}\n`); } catch {}
                     });
                     proxy.on('proxyRes', (proxyRes, req) => {
                         console.log(proxyRes.statusCode, req.url);
+                        try { fs.appendFileSync('proxy.log', `[RES] ${proxyRes.statusCode} ${req.url}\n`); } catch {}
                     });
                 }
             },
@@ -93,7 +95,7 @@ export default defineConfig({
                 //}
             }
         },
-        port: parseInt(env.DEV_SERVER_PORT || '57252')
+        port: parseInt(env.DEV_SERVER_PORT || '3000')
     }
 })
 
