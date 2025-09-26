@@ -5,6 +5,7 @@ import RootComponent from './RootComponent'
 import { persistor, store } from './store/store'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { Container, Button, InputAdornment, IconButton } from '@mui/material'
+import { LanguageProvider } from './contexts/LanguageContext'
 
 // Expose limited globals for dynamic views
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -59,7 +60,9 @@ const App: React.FC = () => {
         <ThemeProvider theme={theme}>
             <Provider store={store}>
                 <PersistGate loading={null} persistor={persistor}>
-                    <RootComponent />
+                    <LanguageProvider>
+                        <RootComponent />
+                    </LanguageProvider>
                 </PersistGate>
             </Provider>
         </ThemeProvider>
