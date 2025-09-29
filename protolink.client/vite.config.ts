@@ -65,15 +65,15 @@ export default defineConfig({
                     proxy.on('error', (err) => {
                         console.log(target);
                         console.log('proxy error', err);
-                        try { fs.appendFileSync('proxy.log', `[ERROR] target=${target} error=${err?.message || err}\n`); } catch {}
+                        //try { fs.appendFileSync('proxy.log', `[ERROR] target=${target} error=${err?.message || err}\n`); } catch { /* empty */ }
                     });
                     proxy.on('proxyReq', (_, req) => {
                         console.log(req.method, `${target}${req.url}`);
-                        try { fs.appendFileSync('proxy.log', `[REQ] ${req.method} ${target}${req.url}\n`); } catch {}
+                        //try { fs.appendFileSync('proxy.log', `[REQ] ${req.method} ${target}${req.url}\n`); } catch { /* empty */ }
                     });
                     proxy.on('proxyRes', (proxyRes, req) => {
                         console.log(proxyRes.statusCode, req.url);
-                        try { fs.appendFileSync('proxy.log', `[RES] ${proxyRes.statusCode} ${req.url}\n`); } catch {}
+                        //try { fs.appendFileSync('proxy.log', `[RES] ${proxyRes.statusCode} ${req.url}\n`); } catch { /* empty */ }
                     });
                 }
             },
@@ -85,7 +85,6 @@ export default defineConfig({
             },
         },
         port: parseInt(env.DEV_SERVER_PORT || '3000'),
-        historyApiFallback: true
     }
 })
 
