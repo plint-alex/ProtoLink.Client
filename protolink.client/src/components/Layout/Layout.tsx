@@ -1,16 +1,28 @@
 ﻿import CssBaseline from '@mui/material/CssBaseline';
 import { styled } from '@mui/material/styles';
+import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { useNavigate, useLocation } from 'react-router-dom';
 import React, { PropsWithChildren } from 'react';
+import UrlLanguageSelector from '../UrlLanguageSelector';
+// import { useLanguageNavigation } from '../../hooks/useLanguageNavigation'; // Disabled - causing URL conflicts
 
 
 const RootDiv = styled('div')(() => ({
-
     display: 'flex',
+    flexDirection: 'column',
     minHeight: '100vh',
 }));
+
 const ContentMain = styled('main')(({ theme }) => ({
     padding: theme.spacing(3),
     width: '100%',
+    flexGrow: 1,
+}));
+
+const Logo = styled('img')(({ theme }) => ({
+    height: 32,
+    width: 32,
+    marginRight: theme.spacing(2),
 }));
 
 
@@ -19,10 +31,67 @@ type FooProps = {
 }
 
 export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Ensure lang parameter is present on all pages
+    // useLanguageNavigation(); // Disabled - causing URL conflicts
+
+    const handleNavigation = (path: string) => {
+        // Navigate directly without adding language parameters
+        navigate(path);
+    };
+
     return (
         <RootDiv>
             <CssBaseline />
-            <ContentMain >
+            <AppBar position="static" elevation={1} sx={{ minHeight: 48 }}>
+                <Toolbar sx={{ minHeight: 48, py: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                        <Logo 
+                            src="/logo.png" 
+                            alt="ProtoLink Logo"
+                            onError={(e) => {
+                                // Fallback to text if logo not found
+                                e.currentTarget.style.display = 'none';
+                            }}
+                        />
+                        <Typography variant="h6" component="div" sx={{ ml: 1 }}>
+                            ProtoLink
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
+                        <Button 
+                            color="inherit" 
+                            onClick={() => handleNavigation('/')}
+                            variant={location.pathname === '/' ? 'outlined' : 'text'}
+                            size="small"
+                        >
+                            Home
+                        </Button>
+                        <Button 
+                            color="inherit" 
+                            onClick={() => handleNavigation('/explorer')}
+                            variant={location.pathname.startsWith('/explorer') ? 'outlined' : 'text'}
+                            size="small"
+                        >
+                            Explorer
+                        </Button>
+                        <Button 
+                            color="inherit" 
+                            onClick={() => handleNavigation('/login')}
+                            variant={location.pathname === '/login' ? 'outlined' : 'text'}
+                            size="small"
+                        >
+                            Login
+                        </Button>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <UrlLanguageSelector />
+                    </Box>
+                </Toolbar>
+            </AppBar>
+            <ContentMain>
                 {props.children}
             </ContentMain>
         </RootDiv>

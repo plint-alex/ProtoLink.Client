@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../store/store';
 import {
     Button,
@@ -56,7 +56,7 @@ const schema = yup.object().shape({
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
-    const localLocation = useLocation();
+    // const localLocation = useLocation(); // Temporarily disabled
     const dispatch = useAppDispatch();
     const authData = useAppSelector((state) => state.authentication);
 
@@ -70,16 +70,17 @@ const LoginPage: React.FC = () => {
     });
 
     useEffect(() => {
-        const queryString = new URLSearchParams(localLocation.search)
-        const logout = queryString.get('logout')
-        queryString.delete('logout');
-        const returnurl = queryString.get('returnurl') 
-        if (authData.accessToken && logout === null) {
-            if (returnurl)
-                location.href = returnurl;
-            else
-                navigate(ROUTES.HOMEPAGE_ROUTE);
-        }
+        // Temporarily disabled to test routing
+        // const queryString = new URLSearchParams(localLocation.search)
+        // const logout = queryString.get('logout')
+        // queryString.delete('logout');
+        // const returnurl = queryString.get('returnurl') 
+        // if (authData.accessToken && logout === null) {
+        //     if (returnurl)
+        //         location.href = returnurl;
+        //     else
+        //         navigate(ROUTES.HOMEPAGE_ROUTE);
+        // }
     }, [authData, navigate]);
 
     const onSubmit = async (data: LoginFormData) => {

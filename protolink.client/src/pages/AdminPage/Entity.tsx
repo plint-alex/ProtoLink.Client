@@ -360,6 +360,8 @@ const EntityComponent: React.FC = () => {
                 open={dialogOpen}
                 onClose={handleCloseEditor}
                 maxWidth={false}
+                fullWidth
+                fullScreen
             >
                 <DialogTitleStyled>
                     Editor
@@ -367,7 +369,12 @@ const EntityComponent: React.FC = () => {
                         <CloseIcon />
                     </IconButton>
                 </DialogTitleStyled>
-                <Editor value={dialogValue} onChange={handleEditorUpdate} />
+                <Editor 
+                    value={dialogValue} 
+                    onChange={handleEditorUpdate}
+                    language="tsx"
+                    title="View Script Editor"
+                />
             </Dialog>
         </StyledPaper>
         <Snackbar open={saveOk} autoHideDuration={2000} onClose={() => setSaveOk(false)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>

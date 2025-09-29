@@ -48,6 +48,13 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
     },
+    build: {
+        outDir: 'build',
+        emptyOutDir: true,
+        rollupOptions: {
+            external: ['aspnet_client']
+        }
+    },
     server: {
         proxy: {
             '^/api': {
@@ -76,26 +83,9 @@ export default defineConfig({
                 secure: false,
                 rewrite: path => path.replace(/^\//, '')
             },
-            '^/test': {
-                target,
-                changeOrigin: true,
-                secure: false,
-                rewrite: path => path.replace(/^\//, '')
-                //configure: (proxy) => {
-                //    proxy.on('error', (err) => {
-                //        console.log(target);
-                //        console.log('proxy error', err);
-                //    });
-                //    proxy.on('proxyReq', (_, req) => {
-                //        console.log(req.method, `${target}${req.url}`);
-                //    });
-                //    proxy.on('proxyRes', (proxyRes, req) => {
-                //        console.log(proxyRes.statusCode, req.url);
-                //    });
-                //}
-            }
         },
-        port: parseInt(env.DEV_SERVER_PORT || '3000')
+        port: parseInt(env.DEV_SERVER_PORT || '3000'),
+        historyApiFallback: true
     }
 })
 

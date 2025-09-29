@@ -1,26 +1,59 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   FormControl, 
   Select, 
   MenuItem, 
   SelectChangeEvent,
   Box,
-  Typography
+  Typography,
+  CircularProgress
 } from '@mui/material'
 import { Language as LanguageIcon } from '@mui/icons-material'
-import { useLanguage } from '../contexts/LanguageContext'
+import { urlLanguageService, Language } from '../services/urlLanguageService'
 
-const LanguageChanger: React.FC = () => {
-  const { language, setLanguage, getTextSync } = useLanguage()
+const UrlLanguageSelector: React.FC = () => {
+  const [languages, setLanguages] = useState<Language[]>([])
+  const [currentLanguage, setCurrentLanguage] = useState<string>('en-US')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadLanguages = async () => {
+      try {
+        setLoading(true)
+        const langs = await urlLanguageService.loadLanguages()
+        setLanguages(langs)
+        
+        // Get current language from URL
+        const current = urlLanguageService.getLanguageFromUrl()
+        setCurrentLanguage(current)
+      } catch (error) {
+        console.error('Error loading languages:', error)
+        // Fallback to default languages
+        setLanguages([
+          { id: '00010002-0002-0000-0000-000000000000', code: 'en-US', name: 'English', flag: '🇺🇸' },
+          { id: '00010002-0001-0000-0000-000000000000', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadLanguages()
+  }, [])
 
   const handleLanguageChange = (event: SelectChangeEvent) => {
-    setLanguage(event.target.value)
+    const newLang = event.target.value
+    setCurrentLanguage(newLang)
+    urlLanguageService.setLanguage(newLang)
   }
 
-  const languages = [
-    { code: 'en-US', name: 'English', flag: '🇺🇸' },
-    { code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
-  ]
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 120 }}>
+        <CircularProgress size={20} sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+      </Box>
+    )
+  }
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 120 }}>
@@ -48,7 +81,7 @@ const LanguageChanger: React.FC = () => {
         }}
       >
         <Select
-          value={language}
+          value={currentLanguage}
           onChange={handleLanguageChange}
           displayEmpty
           variant="outlined"
@@ -66,7 +99,7 @@ const LanguageChanger: React.FC = () => {
           }}
         >
           {languages.map((lang) => (
-            <MenuItem key={lang.code} value={lang.code}>
+            <MenuItem key={lang.id} value={lang.code}>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Typography sx={{ mr: 1, fontSize: '1.2em' }}>
                   {lang.flag}
@@ -83,4 +116,4 @@ const LanguageChanger: React.FC = () => {
   )
 }
 
-export default LanguageChanger
+export default UrlLanguageSelector

@@ -6,27 +6,35 @@ import { Layout } from './components/Layout'
 import NotFoundPage from './pages/NotFoundPage'
 import { ROUTES } from './resources/routes-constants'
 import AdminPage from './pages/AdminPage/AdminPage'
+import TestPage from './pages/TestPage'
 
 const RootComponent: React.FC = () => {
-    // rudimentary route debug
+    // Enhanced route debug
     if (typeof window !== 'undefined') {
         // eslint-disable-next-line no-console
         console.log('[Router] at', window.location.pathname + window.location.search)
+        console.log('[Router] current pathname:', window.location.pathname)
+        console.log('[Router] test route should match:', window.location.pathname === '/test' || window.location.pathname.startsWith('/test/'))
+        console.log('[Router] explorer route should match:', window.location.pathname === '/explorer' || window.location.pathname.startsWith('/explorer/'))
+        console.log('[Router] login route should match:', window.location.pathname === '/login')
+        console.log('[Router] home route should match:', window.location.pathname === '/')
     }
 
     return (
-        <Layout name={'Layout'}>
-            <Router>
+        <Router>
+            <Layout name={'Layout'}>
                 <Routes>
-                    <Route path="*" element={<NotFoundPage />} />
-                    <Route path={ROUTES.HOMEPAGE_ROUTE} element={<HomePage />} />
-                    <Route path={ROUTES.HOMEPAGE_ROUTE + '/:id'} element={<HomePage />} />
-                    <Route path={ROUTES.EXPLORER_ROUTE} element={<AdminPage />} />
-                    <Route path={ROUTES.EXPLORER_ROUTE + '/:id'} element={<AdminPage />} />
-                    <Route path={ROUTES.LOGIN_ROUTE} element={<LoginPage />} />
+                        <Route path={ROUTES.HOMEPAGE_ROUTE} element={<HomePage />} />
+                        <Route path={ROUTES.HOMEPAGE_ROUTE + '/:id'} element={<HomePage />} />
+                        <Route path={ROUTES.TEST_ROUTE} element={<TestPage />} />
+                        <Route path={ROUTES.TEST_ROUTE + '/:id'} element={<TestPage />} />
+                        <Route path={ROUTES.EXPLORER_ROUTE} element={<AdminPage />} />
+                        <Route path={ROUTES.EXPLORER_ROUTE + '/:id'} element={<AdminPage />} />
+                        <Route path={ROUTES.LOGIN_ROUTE} element={<LoginPage />} />
+                        <Route path="*" element={<NotFoundPage />} />
                 </Routes>
-            </Router>
-        </Layout>
+            </Layout>
+        </Router>
     )
 }
 
