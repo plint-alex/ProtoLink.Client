@@ -306,27 +306,49 @@ export const loadViewScript = createAsyncThunk<{ entityId: string, entityViews: 
                     const babelScript = document.createElement('script');
                     babelScript.src = 'https://unpkg.com/@babel/standalone/babel.min.js';
                     babelScript.async = true;
-                    babelScript.onload = () => resolve();
+                    babelScript.onload = () => {
+                        // Try to load TypeScript preset
+                        const Babel = (window as any).Babel;
+                        if (Babel && !Babel.availablePresets?.typescript) {
+                            console.warn('[loadViewScript] TypeScript preset not available in Babel standalone');
+                        }
+                        resolve();
+                    };
                     babelScript.onerror = () => reject(new Error('Failed to load Babel standalone'));
                     document.head.appendChild(babelScript);
                 });
             };
 
             const executeViewScript = async (rawCode: string, currentViewId?: string) => {
-                // 1) Sanitize: strip ESM imports/exports which are not supported in injected scripts
-                let sanitized = rawCode
-                    .replace(/^\s*import\s+[^;]+;?\s*$/gm, '')
-                    .replace(/^\s*export\s+default\s+/gm, '')
-                    .replace(/^\s*export\s+\{[^}]*\};?\s*$/gm, '')
-                    // Avoid duplicate React/ReactDOM declarations from dynamic scripts
-                    .replace(/^\s*(?:var|let|const)\s+React\s*=.*$/gm, '')
-                    .replace(/^\s*(?:var|let|const)\s+ReactDOM\s*=.*$/gm, '');
+                // Check if this is already server-transformed JavaScript (contains React.createElement calls)
+                const isServerTransformed = rawCode.includes('React.createElement') && rawCode.includes('window[');
+                
+                let sanitized = rawCode;
+                
+                if (!isServerTransformed) {
+                    // 1) Sanitize: strip ESM imports/exports which are not supported in injected scripts
+                    // Only sanitize if this is NOT server-transformed JavaScript
+                    sanitized = rawCode
+                        // Remove import statements (more comprehensive)
+                        .replace(/^\s*import\s+.*?from\s+.*?;?\s*$/gm, '')
+                        .replace(/^\s*import\s+.*?;?\s*$/gm, '')
+                        .replace(/^\s*export\s+default\s+/gm, '')
+                        .replace(/^\s*export\s+\{[^}]*\};?\s*$/gm, '')
+                        // Avoid duplicate React/ReactDOM declarations from dynamic scripts
+                        .replace(/^\s*(?:var|let|const)\s+React\s*=.*$/gm, '')
+                        .replace(/^\s*(?:var|let|const)\s+ReactDOM\s*=.*$/gm, '');
 
-                // Extra cleanup: inline/combined declarations e.g., "const React = window.React, ReactDOM = window.ReactDOM;"
-                sanitized = sanitized
-                    .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+React\s*=[^,;]*,\s*ReactDOM\s*=[^;]*;?/g, ';')
-                    .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+ReactDOM\s*=[^;]*;?/g, ';')
-                    .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+React\s*=[^;]*;?/g, ';');
+                    // Extra cleanup: inline/combined declarations e.g., "const React = window.React, ReactDOM = window.ReactDOM;"
+                    sanitized = sanitized
+                        .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+React\s*=[^,;]*,\s*ReactDOM\s*=[^;]*;?/g, ';')
+                        .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+ReactDOM\s*=[^;]*;?/g, ';')
+                        .replace(/(?:^|[;\n\r])\s*(?:const|let|var)\s+React\s*=[^;]*;?/g, ';')
+                        // Remove any remaining import-like statements
+                        .replace(/import\s+.*?from\s+.*?;?/g, '')
+                        .replace(/import\s+.*?;?/g, '');
+                } else {
+                    console.log('[loadViewScript] Detected server-transformed JavaScript, skipping sanitization');
+                }
 
                 // Pre-check: if the raw code compiles by itself, prefer it directly (no wrapping)
                 try {
@@ -345,21 +367,74 @@ export const loadViewScript = createAsyncThunk<{ entityId: string, entityViews: 
                     // fall back to wrapper path
                 }
 
-                // 2) If it looks like JSX, transpile with Babel at runtime (wrapper path)
+                // 2) If it looks like JSX or TypeScript, transpile with Babel at runtime (wrapper path)
+                // Skip Babel transpilation for server-transformed JavaScript
                 let executableCode = sanitized;
                 const probablyJsx = /return\s*\(\s*</.test(sanitized);
-                if (probablyJsx) {
+                const probablyTypeScript = /:\s*\w+|as\s+\w+|interface\s+\w+|type\s+\w+\s*=|React\.FC<|<.*>.*>/.test(sanitized);
+                
+                if (!isServerTransformed && (probablyJsx || probablyTypeScript)) {
                     await ensureBabelLoaded();
                     const Babel: any = (window as any).Babel;
+                    
+                    // Check if TypeScript preset is available
+                    const hasTypeScriptPreset = Babel?.availablePresets?.typescript;
+                    
                     try {
-                        const transformed = Babel.transform(sanitized, {
-                            presets: ['react'],
-                            sourceType: 'script'
-                        });
-                        executableCode = transformed.code ?? sanitized;
+                        const presets = ['react'];
+                        if (probablyTypeScript && hasTypeScriptPreset) {
+                            presets.push('typescript');
+                            console.log('[loadViewScript] Using TypeScript preset');
+                        } else if (probablyTypeScript && !hasTypeScriptPreset) {
+                            console.warn('[loadViewScript] TypeScript preset not available, stripping TypeScript syntax');
+                            // Strip TypeScript syntax manually
+                            executableCode = sanitized
+                                .replace(/:\s*\w+(\[\])?/g, '') // Remove type annotations
+                                .replace(/as\s+\w+/g, '') // Remove type assertions
+                                .replace(/type\s+\w+\s*=\s*[^;]+;?\s*/g, '') // Remove type definitions
+                                .replace(/interface\s+\w+\s*\{[^}]*\}\s*/g, '') // Remove interfaces
+                                .replace(/React\.FC<[^>]*>/g, 'React.FC') // Simplify React.FC types
+                                .replace(/<[^>]*>/g, '') // Remove generic types
+                                .replace(/^\s*$/gm, '') // Remove empty lines
+                                .trim();
+                        }
+                        
+                        if (probablyJsx || (probablyTypeScript && hasTypeScriptPreset)) {
+                            const transformed = Babel.transform(executableCode, {
+                                presets: presets,
+                                sourceType: 'script'
+                            });
+                            executableCode = transformed.code ?? executableCode;
+                            console.log('[loadViewScript] Transformed script:', transformed.code);
+                        }
                     } catch (transformError) {
-                        console.error('[loadViewScript] JSX transform failed', transformError);
-                        throw transformError;
+                        console.error('[loadViewScript] Babel transform failed', transformError);
+                        // Final fallback: try to strip all TypeScript syntax and use React-only
+                        if (probablyTypeScript) {
+                            try {
+                                const strippedCode = sanitized
+                                    .replace(/:\s*\w+(\[\])?/g, '')
+                                    .replace(/as\s+\w+/g, '')
+                                    .replace(/type\s+\w+\s*=\s*[^;]+;?\s*/g, '')
+                                    .replace(/interface\s+\w+\s*\{[^}]*\}\s*/g, '')
+                                    .replace(/React\.FC<[^>]*>/g, 'React.FC')
+                                    .replace(/<[^>]*>/g, '')
+                                    .replace(/^\s*$/gm, '')
+                                    .trim();
+                                
+                                const fallbackTransformed = Babel.transform(strippedCode, {
+                                    presets: ['react'],
+                                    sourceType: 'script'
+                                });
+                                executableCode = fallbackTransformed.code ?? strippedCode;
+                                console.warn('[loadViewScript] Using stripped TypeScript syntax');
+                            } catch (fallbackError) {
+                                console.error('[loadViewScript] Fallback transform also failed', fallbackError);
+                                throw transformError;
+                            }
+                        } else {
+                            throw transformError;
+                        }
                     }
                 }
 

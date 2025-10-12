@@ -4,17 +4,40 @@ import { PersistGate } from 'redux-persist/integration/react'
 import RootComponent from './RootComponent'
 import { persistor, store } from './store/store'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
-// import material from '@mui/material' // Invalid import - removed
+import * as material from '@mui/material'
 
 // Expose limited globals for dynamic views
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const w = window as any;
 if (!w.react) {
+    // Core React exports
     w['react'] = React;
-    // Map commonly used MUI components for dynamic views. Add here used components on the dynamic views.
-    // w['@mui/material'] = material; // Removed due to invalid import
+    w['React'] = React;
+    
+    // React hooks and utilities
+    w['useState'] = React.useState;
+    w['useEffect'] = React.useEffect;
+    w['useMemo'] = React.useMemo;
+    w['useCallback'] = React.useCallback;
+    w['createElement'] = React.createElement;
+    
+    // Material-UI components
+    w['@mui/material'] = material;
+    w['mui'] = material; // Shorter alias
+    
+    // Common Material-UI components for convenience
+    w['Box'] = material.Box;
+    w['Typography'] = material.Typography;
+    w['Button'] = material.Button;
+    w['TextField'] = material.TextField;
+    w['Paper'] = material.Paper;
+    w['Grid'] = material.Grid;
+    w['Container'] = material.Container;
+    w['Card'] = material.Card;
+    w['CardContent'] = material.CardContent;
+    w['CardActions'] = material.CardActions;
 
-    // Minimal internal helpers that dynamic views can use
+    // Internal helpers for dynamic views
     w['internal'] = {
         apiRequest: async (path: string, method: string, body?: unknown) => {
             const res = await fetch(`/api/${path}`.replace(/\/+/, '/'), {
@@ -26,8 +49,11 @@ if (!w.react) {
             return res.json();
         },
     };
-    //Use this in the dynamic views. Example:
-    //Container = windows['@mui/material'];
+    
+    // Usage examples for dynamic views:
+    // const React = window['react'];
+    // const { Box, Typography } = window['mui'];
+    // const { useState, useEffect } = window['react'];
 }
 
 const theme = createTheme({
