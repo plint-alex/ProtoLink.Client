@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  FormControl, 
-  Select, 
-  MenuItem, 
+import {
+  FormControl,
+  Select,
+  MenuItem,
   SelectChangeEvent,
   Box,
   Typography,
   CircularProgress
 } from '@mui/material'
-import { Language as LanguageIcon } from '@mui/icons-material'
 import { urlLanguageService, Language } from '../services/urlLanguageService'
 
 const UrlLanguageSelector: React.FC = () => {
@@ -49,31 +48,33 @@ const UrlLanguageSelector: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 120 }}>
-        <CircularProgress size={20} sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 80 }}>
+        <CircularProgress size={18} sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
       </Box>
     )
   }
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 120 }}>
-      <LanguageIcon sx={{ mr: 1, color: 'inherit' }} />
-      <FormControl 
-        size="small" 
-        sx={{ 
-          minWidth: 100,
+    <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 80 }}>
+      <FormControl
+        size="small"
+        sx={{
+          minWidth: 72,
           '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'rgba(255, 255, 255, 0.3)',
+            borderColor: 'transparent',
           },
           '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'rgba(255, 255, 255, 0.5)',
+            borderColor: 'rgba(255, 255, 255, 0.4)',
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'rgba(255, 255, 255, 0.7)',
+            borderColor: 'rgba(255, 255, 255, 0.6)',
           },
           '& .MuiSelect-select': {
             color: 'inherit',
-            padding: '8px 12px',
+            padding: '4px 26px 4px 8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
           },
           '& .MuiSelect-icon': {
             color: 'inherit',
@@ -85,28 +86,54 @@ const UrlLanguageSelector: React.FC = () => {
           onChange={handleLanguageChange}
           displayEmpty
           variant="outlined"
+          renderValue={(selected) => {
+            const lang = languages.find((item) => item.code === selected)
+            if (!lang) {
+              return selected
+            }
+            return (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography sx={{ fontSize: '1.1em' }}>{lang.flag}</Typography>
+                <Typography variant="caption" sx={{ color: 'inherit' }}>
+                  {lang.code}
+                </Typography>
+              </Box>
+            )
+          }}
+          MenuProps={{
+            PaperProps: {
+              sx: {
+                minWidth: 120
+              }
+            }
+          }}
           sx={{
             color: 'inherit',
             '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'rgba(255, 255, 255, 0.3)',
+              borderColor: 'transparent',
             },
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'rgba(255, 255, 255, 0.5)',
+              borderColor: 'rgba(255, 255, 255, 0.4)',
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'rgba(255, 255, 255, 0.7)',
+              borderColor: 'rgba(255, 255, 255, 0.6)',
             },
           }}
         >
           {languages.map((lang) => (
             <MenuItem key={lang.id} value={lang.code}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography sx={{ mr: 1, fontSize: '1.2em' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography sx={{ fontSize: '1.2em' }}>
                   {lang.flag}
                 </Typography>
-                <Typography variant="body2">
-                  {lang.name}
-                </Typography>
+                <Box>
+                  <Typography variant="body2" sx={{ lineHeight: 1 }}>
+                    {lang.name}
+                  </Typography>
+                  <Typography variant="caption" sx={{ lineHeight: 1 }}>
+                    {lang.code}
+                  </Typography>
+                </Box>
               </Box>
             </MenuItem>
           ))}

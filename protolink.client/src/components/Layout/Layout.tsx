@@ -1,10 +1,12 @@
 ﻿import CssBaseline from '@mui/material/CssBaseline';
 import { styled } from '@mui/material/styles';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box, Tooltip } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import React, { PropsWithChildren } from 'react';
 import UrlLanguageSelector from '../UrlLanguageSelector';
 // import { useLanguageNavigation } from '../../hooks/useLanguageNavigation'; // Disabled - causing URL conflicts
+import { useAppDispatch, useAppSelector } from '../../store/store';
+import { logout } from '../../store/actions/thunkActions/authentication';
 
 
 const RootDiv = styled('div')(() => ({
@@ -33,6 +35,9 @@ type FooProps = {
 export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
     const navigate = useNavigate();
     const location = useLocation();
+    const dispatch = useAppDispatch();
+    const authentication = useAppSelector((state) => state.authentication);
+    const isAuthenticated = Boolean(authentication?.accessToken);
     
     // Ensure lang parameter is present on all pages
     // useLanguageNavigation(); // Disabled - causing URL conflicts
@@ -40,6 +45,11 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
     const handleNavigation = (path: string) => {
         // Navigate directly without adding language parameters
         navigate(path);
+    };
+
+    const handleLogout = () => {
+        void dispatch(logout());
+        handleNavigation('/login');
     };
 
     return (
@@ -60,31 +70,55 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                             ProtoLink
                         </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
-                        <Button 
-                            color="inherit" 
-                            onClick={() => handleNavigation('/')}
-                            variant={location.pathname === '/' ? 'outlined' : 'text'}
-                            size="small"
-                        >
-                            Home
-                        </Button>
-                        <Button 
-                            color="inherit" 
-                            onClick={() => handleNavigation('/explorer')}
-                            variant={location.pathname.startsWith('/explorer') ? 'outlined' : 'text'}
-                            size="small"
-                        >
-                            Explorer
-                        </Button>
-                        <Button 
-                            color="inherit" 
-                            onClick={() => handleNavigation('/login')}
-                            variant={location.pathname === '/login' ? 'outlined' : 'text'}
-                            size="small"
-                        >
-                            Login
-                        </Button>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button 
+                                color="inherit" 
+                                onClick={() => handleNavigation('/')}
+                                variant={location.pathname === '/' ? 'outlined' : 'text'}
+                                size="small"
+                            >
+                                Home
+                            </Button>
+                            <Button 
+                                color="inherit" 
+                                onClick={() => handleNavigation('/explorer')}
+                                variant={location.pathname.startsWith('/explorer') ? 'outlined' : 'text'}
+                                size="small"
+                            >
+                                Explorer
+                            </Button>
+                        </Box>
+                        <Box sx={{ flexGrow: 1 }} />
+                        {!isAuthenticated && (
+                            <Button 
+                                color="inherit" 
+                                onClick={() => handleNavigation('/login')}
+                                variant={location.pathname === '/login' ? 'outlined' : 'text'}
+                                size="small"
+                            >
+                                Login
+                            </Button>
+                        )}
+                        {isAuthenticated && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {authentication?.userName && (
+                                    <Tooltip title={authentication.userName}>
+                                        <Typography variant="body2" sx={{ maxWidth: 120, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {authentication.userName}
+                                        </Typography>
+                                    </Tooltip>
+                                )}
+                                <Button 
+                                    color="inherit" 
+                                    onClick={handleLogout}
+                                    variant="outlined"
+                                    size="small"
+                                >
+                                    Logout
+                                </Button>
+                            </Box>
+                        )}
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <UrlLanguageSelector />

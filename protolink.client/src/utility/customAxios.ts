@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { getStoredState } from 'redux-persist'
-import { persistConfig, RootState } from '../store/store';
+import { persistConfig } from '../store/persistConfig';
+import type { RootState } from '../store/store';
 const CustomAxios = axios.create()
 
 //const toCamelCase: any = (object: any) => {

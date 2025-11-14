@@ -21,7 +21,7 @@ export interface EntitiesStatePart {
     entityViews: Dictionary<EntityViewMapping[]>;
     loading: boolean;
     error: string | null;
-    viewScripts: string;
+    viewScripts: Dictionary<{ original?: string; transpiled?: string }>;
 }
 
 export type EntitiesState = Dictionary<Entity[]> | Dictionary<Entity> | EntitiesStatePart
@@ -32,7 +32,7 @@ const initialState: EntitiesState = {
     entityViews: { },
     loading: false,
     error: null,
-    viewScripts: ''
+    viewScripts: {}
 };
 
 const entitiesSlice = createSlice({
@@ -196,6 +196,13 @@ const entitiesSlice = createSlice({
                 state.entityViews = {
                     ...state.entityViews,
                     [action.payload.entityId]: action.payload.entityViews
+                };
+                state.viewScripts = {
+                    ...state.viewScripts,
+                    [action.payload.entityId]: {
+                        original: action.payload.originalScript,
+                        transpiled: action.payload.transpiledScript
+                    }
                 };
             })
             .addCase(loadViewScript.rejected, (state, action) => {

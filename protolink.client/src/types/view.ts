@@ -5,5 +5,6 @@ export interface EntityViewMapping {
 
 export interface ViewData {
     scripts: string;
+    originalScripts?: string;
     entityViews: EntityViewMapping[]
 }
