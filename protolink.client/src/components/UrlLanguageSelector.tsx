@@ -6,7 +6,8 @@ import {
   SelectChangeEvent,
   Box,
   Typography,
-  CircularProgress
+  CircularProgress,
+  Tooltip
 } from '@mui/material'
 import { urlLanguageService, Language } from '../services/urlLanguageService'
 
@@ -46,60 +47,63 @@ const UrlLanguageSelector: React.FC = () => {
     urlLanguageService.setLanguage(newLang)
   }
 
+  const getLanguageCode = (code: string): string => {
+    return code.split('-')[0]
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 80 }}>
-        <CircularProgress size={18} sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+        <CircularProgress size={18} sx={{ color: '#5F6368' }} />
       </Box>
     )
   }
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 80 }}>
-      <FormControl
-        size="small"
-        sx={{
-          minWidth: 72,
-          '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'transparent',
-          },
-          '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'rgba(255, 255, 255, 0.4)',
-          },
-          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: 'rgba(255, 255, 255, 0.6)',
-          },
-          '& .MuiSelect-select': {
-            color: 'inherit',
-            padding: '4px 26px 4px 8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          },
-          '& .MuiSelect-icon': {
-            color: 'inherit',
-          }
-        }}
-      >
-        <Select
-          value={currentLanguage}
-          onChange={handleLanguageChange}
-          displayEmpty
-          variant="outlined"
-          renderValue={(selected) => {
-            const lang = languages.find((item) => item.code === selected)
-            if (!lang) {
-              return selected
+      <Tooltip title={currentLanguage} arrow>
+        <FormControl
+          size="small"
+          sx={{
+            minWidth: 72,
+            '& .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'transparent',
+            },
+            '&:hover .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'rgba(60, 64, 67, 0.2)',
+            },
+            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+              borderColor: 'rgba(60, 64, 67, 0.3)',
+            },
+            '& .MuiSelect-select': {
+              color: '#202124',
+              padding: '4px 26px 4px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+            },
+            '& .MuiSelect-icon': {
+              color: '#5F6368',
             }
-            return (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography sx={{ fontSize: '1.1em' }}>{lang.flag}</Typography>
-                <Typography variant="caption" sx={{ color: 'inherit' }}>
-                  {lang.code}
-                </Typography>
-              </Box>
-            )
           }}
+        >
+          <Select
+            value={currentLanguage}
+            onChange={handleLanguageChange}
+            displayEmpty
+            variant="outlined"
+            renderValue={(selected) => {
+              const lang = languages.find((item) => item.code === selected)
+              if (!lang) {
+                return getLanguageCode(selected)
+              }
+              return (
+                <Typography variant="caption" sx={{ color: '#202124', fontSize: '12px' }}>
+                  {getLanguageCode(lang.code)}
+                </Typography>
+              )
+            }}
           MenuProps={{
             PaperProps: {
               sx: {
@@ -108,15 +112,15 @@ const UrlLanguageSelector: React.FC = () => {
             }
           }}
           sx={{
-            color: 'inherit',
+            color: '#202124',
             '& .MuiOutlinedInput-notchedOutline': {
               borderColor: 'transparent',
             },
             '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'rgba(255, 255, 255, 0.4)',
+              borderColor: 'rgba(60, 64, 67, 0.2)',
             },
             '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'rgba(255, 255, 255, 0.6)',
+              borderColor: 'rgba(60, 64, 67, 0.3)',
             },
           }}
         >
@@ -139,6 +143,7 @@ const UrlLanguageSelector: React.FC = () => {
           ))}
         </Select>
       </FormControl>
+      </Tooltip>
     </Box>
   )
 }

@@ -1,9 +1,10 @@
 ﻿import CssBaseline from '@mui/material/CssBaseline';
 import { styled } from '@mui/material/styles';
-import { AppBar, Toolbar, Typography, Button, Box, Tooltip } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import React, { PropsWithChildren } from 'react';
 import UrlLanguageSelector from '../UrlLanguageSelector';
+import { UserMenu } from './UserMenu';
 // import { useLanguageNavigation } from '../../hooks/useLanguageNavigation'; // Disabled - causing URL conflicts
 import { useAppDispatch, useAppSelector } from '../../store/store';
 import { logout } from '../../store/actions/thunkActions/authentication';
@@ -22,9 +23,9 @@ const ContentMain = styled('main')(({ theme }) => ({
 }));
 
 const Logo = styled('img')(({ theme }) => ({
-    height: 32,
-    width: 32,
-    marginRight: theme.spacing(2),
+    height: 20,
+    width: 20,
+    marginRight: theme.spacing(1),
 }));
 
 
@@ -37,7 +38,6 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
     const location = useLocation();
     const dispatch = useAppDispatch();
     const authentication = useAppSelector((state) => state.authentication);
-    const isAuthenticated = Boolean(authentication?.accessToken);
     
     // Ensure lang parameter is present on all pages
     // useLanguageNavigation(); // Disabled - causing URL conflicts
@@ -55,9 +55,27 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
     return (
         <RootDiv>
             <CssBaseline />
-            <AppBar position="static" elevation={1} sx={{ minHeight: 48 }}>
-                <Toolbar sx={{ minHeight: 48, py: 0 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+            <AppBar 
+                position="static" 
+                elevation={0} 
+                sx={{ 
+                    backgroundColor: '#FFFFFF',
+                    borderBottom: '1px solid #E0E0E0',
+                    boxShadow: '0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15)',
+                    minHeight: 56,
+                    height: 56,
+                }}
+            >
+                <Toolbar 
+                    sx={{ 
+                        minHeight: '56px !important',
+                        height: 56,
+                        py: 0,
+                        px: 1,
+                        backgroundColor: '#FFFFFF',
+                    }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', mr: 1.5 }}>
                         <Logo 
                             src="/logo.png" 
                             alt="ProtoLink Logo"
@@ -66,62 +84,79 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                                 e.currentTarget.style.display = 'none';
                             }}
                         />
-                        <Typography variant="h6" component="div" sx={{ ml: 1 }}>
+                        <Typography 
+                            variant="h6" 
+                            component="div" 
+                            sx={{ 
+                                ml: 1,
+                                color: '#202124',
+                                fontSize: '14px',
+                                fontWeight: 400,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                            }}
+                        >
                             ProtoLink
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
                             <Button 
-                                color="inherit" 
                                 onClick={() => handleNavigation('/')}
-                                variant={location.pathname === '/' ? 'outlined' : 'text'}
                                 size="small"
+                                sx={{
+                                    color: '#202124',
+                                    textTransform: 'uppercase',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    letterSpacing: '0.5px',
+                                    minWidth: 'auto',
+                                    px: 1.5,
+                                    py: 0.5,
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(60, 64, 67, 0.08)',
+                                    },
+                                    ...(location.pathname === '/' && {
+                                        backgroundColor: 'rgba(60, 64, 67, 0.12)',
+                                    }),
+                                }}
                             >
                                 Home
                             </Button>
                             <Button 
-                                color="inherit" 
                                 onClick={() => handleNavigation('/explorer')}
-                                variant={location.pathname.startsWith('/explorer') ? 'outlined' : 'text'}
                                 size="small"
+                                sx={{
+                                    color: '#202124',
+                                    textTransform: 'uppercase',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    letterSpacing: '0.5px',
+                                    minWidth: 'auto',
+                                    px: 1.5,
+                                    py: 0.5,
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(60, 64, 67, 0.08)',
+                                    },
+                                    ...(location.pathname.startsWith('/explorer') && {
+                                        backgroundColor: 'rgba(60, 64, 67, 0.12)',
+                                    }),
+                                }}
                             >
                                 Explorer
                             </Button>
                         </Box>
                         <Box sx={{ flexGrow: 1 }} />
-                        {!isAuthenticated && (
-                            <Button 
-                                color="inherit" 
-                                onClick={() => handleNavigation('/login')}
-                                variant={location.pathname === '/login' ? 'outlined' : 'text'}
-                                size="small"
-                            >
-                                Login
-                            </Button>
-                        )}
-                        {isAuthenticated && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {authentication?.userName && (
-                                    <Tooltip title={authentication.userName}>
-                                        <Typography variant="body2" sx={{ maxWidth: 120, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {authentication.userName}
-                                        </Typography>
-                                    </Tooltip>
-                                )}
-                                <Button 
-                                    color="inherit" 
-                                    onClick={handleLogout}
-                                    variant="outlined"
-                                    size="small"
-                                >
-                                    Logout
-                                </Button>
-                            </Box>
-                        )}
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
                         <UrlLanguageSelector />
+                        <UserMenu
+                            userName={authentication?.userName}
+                            login={authentication?.login}
+                            onLogout={handleLogout}
+                        />
                     </Box>
                 </Toolbar>
             </AppBar>

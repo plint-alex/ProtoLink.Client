@@ -8,7 +8,7 @@ import type { EntityViewMapping } from '../types/view';
 import ErrorBoundary from '../ErrorBoundary';
 
 const DEFAULT_HOME_ENTITY_ID = '4cca22a8-bf99-4c52-a753-c820969925c3';
-const EMPTY_MAPPINGS: EntityViewMapping[] = Object.freeze([] as EntityViewMapping[]);
+const EMPTY_MAPPINGS: readonly EntityViewMapping[] = [];
 
 const HomePage: React.FC = () => {
     const { id: routeEntityId } = useParams<{ id?: string }>();

@@ -57,6 +57,53 @@ if (!w.react) {
 }
 
 const theme = createTheme({
+    palette: {
+        primary: {
+            main: '#4285F4', // Google Blue
+            light: '#669DF6',
+            dark: '#1A73E8',
+            contrastText: '#FFFFFF',
+        },
+        secondary: {
+            main: '#34A853', // Google Green
+            light: '#66BB6A',
+            dark: '#2E7D32',
+            contrastText: '#FFFFFF',
+        },
+        error: {
+            main: '#EA4335', // Google Red
+            light: '#EF5350',
+            dark: '#C62828',
+            contrastText: '#FFFFFF',
+        },
+        warning: {
+            main: '#FBBC04', // Google Yellow
+            light: '#FFC107',
+            dark: '#F57C00',
+            contrastText: '#202124',
+        },
+        info: {
+            main: '#4285F4', // Google Blue
+            light: '#669DF6',
+            dark: '#1A73E8',
+            contrastText: '#FFFFFF',
+        },
+        success: {
+            main: '#34A853', // Google Green
+            light: '#66BB6A',
+            dark: '#2E7D32',
+            contrastText: '#FFFFFF',
+        },
+        background: {
+            default: '#FFFFFF',
+            paper: '#FFFFFF',
+        },
+        text: {
+            primary: '#202124',
+            secondary: '#5F6368',
+        },
+        divider: '#DADCE0',
+    },
     mixins: {
         toolbar: {
             minHeight: 75,
