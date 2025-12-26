@@ -169,7 +169,18 @@ const LoginPage: React.FC = () => {
                         {isSubmitting ? <CircularProgress size={24} /> : 'Sign In'}
                     </SubmitButton>
 
-                    <Grid container spacing={2}>
+                <Grid container spacing={2}>
+                    <Grid item xs>
+                        <Button
+                            variant="text"
+                            color="primary"
+                            onClick={() => navigate(ROUTES.REGISTER_ROUTE)}
+                            disabled={isSubmitting}
+                        >
+                            Register
+                        </Button>
+                    </Grid>
+                    <Grid item xs>
                         <Button
                             variant="text"
                             color="primary"
@@ -179,6 +190,7 @@ const LoginPage: React.FC = () => {
                             Back to Home
                         </Button>
                     </Grid>
+                </Grid>
                 </LoginForm>
             </LoginPaper>
         </LoginContainer>

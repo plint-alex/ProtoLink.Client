@@ -7,6 +7,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import { ROUTES } from './resources/routes-constants'
 import AdminPage from './pages/AdminPage/AdminPage'
 import TestPage from './pages/TestPage'
+import RegisterPage from './pages/RegisterPage'
 
 const RootComponent: React.FC = () => {
     // Enhanced route debug
@@ -31,6 +32,7 @@ const RootComponent: React.FC = () => {
                         <Route path={ROUTES.EXPLORER_ROUTE} element={<AdminPage />} />
                         <Route path={ROUTES.EXPLORER_ROUTE + '/:id'} element={<AdminPage />} />
                         <Route path={ROUTES.LOGIN_ROUTE} element={<LoginPage />} />
+                        <Route path={ROUTES.REGISTER_ROUTE} element={<RegisterPage />} />
                         <Route path="*" element={<NotFoundPage />} />
                 </Routes>
             </Layout>

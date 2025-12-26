@@ -38,6 +38,7 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
     const location = useLocation();
     const dispatch = useAppDispatch();
     const authentication = useAppSelector((state) => state.authentication);
+    const isAuthenticated = Boolean(authentication?.accessToken);
     
     // Ensure lang parameter is present on all pages
     // useLanguageNavigation(); // Disabled - causing URL conflicts
@@ -75,19 +76,26 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                         backgroundColor: '#FFFFFF',
                     }}
                 >
-                    <Box sx={{ display: 'flex', alignItems: 'center', mr: 1.5 }}>
-                        <Logo 
-                            src="/logo.png" 
+                    <Box
+                        onClick={() => handleNavigation('/')}
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            mr: 1.5,
+                            cursor: 'pointer',
+                        }}
+                    >
+                        <Logo
+                            src="/logo.png"
                             alt="ProtoLink Logo"
                             onError={(e) => {
-                                // Fallback to text if logo not found
                                 e.currentTarget.style.display = 'none';
                             }}
                         />
-                        <Typography 
-                            variant="h6" 
-                            component="div" 
-                            sx={{ 
+                        <Typography
+                            variant="h6"
+                            component="div"
+                            sx={{
                                 ml: 1,
                                 color: '#202124',
                                 fontSize: '14px',
@@ -100,63 +108,67 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                            <Button 
-                                onClick={() => handleNavigation('/')}
-                                size="small"
-                                sx={{
-                                    color: '#202124',
-                                    textTransform: 'uppercase',
-                                    fontSize: '12px',
-                                    fontWeight: 500,
-                                    letterSpacing: '0.5px',
-                                    minWidth: 'auto',
-                                    px: 1.5,
-                                    py: 0.5,
-                                    borderRadius: '4px',
-                                    '&:hover': {
-                                        backgroundColor: 'rgba(60, 64, 67, 0.08)',
-                                    },
-                                    ...(location.pathname === '/' && {
-                                        backgroundColor: 'rgba(60, 64, 67, 0.12)',
-                                    }),
-                                }}
-                            >
-                                Home
-                            </Button>
-                            <Button 
-                                onClick={() => handleNavigation('/explorer')}
-                                size="small"
-                                sx={{
-                                    color: '#202124',
-                                    textTransform: 'uppercase',
-                                    fontSize: '12px',
-                                    fontWeight: 500,
-                                    letterSpacing: '0.5px',
-                                    minWidth: 'auto',
-                                    px: 1.5,
-                                    py: 0.5,
-                                    borderRadius: '4px',
-                                    '&:hover': {
-                                        backgroundColor: 'rgba(60, 64, 67, 0.08)',
-                                    },
-                                    ...(location.pathname.startsWith('/explorer') && {
-                                        backgroundColor: 'rgba(60, 64, 67, 0.12)',
-                                    }),
-                                }}
-                            >
-                                Explorer
-                            </Button>
-                        </Box>
-                        <Box sx={{ flexGrow: 1 }} />
+                        {isAuthenticated && (
+                            <>
+                                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                    <Button
+                                        onClick={() => handleNavigation('/explorer')}
+                                        size="small"
+                                        sx={{
+                                            color: '#202124',
+                                            textTransform: 'uppercase',
+                                            fontSize: '12px',
+                                            fontWeight: 500,
+                                            letterSpacing: '0.5px',
+                                            minWidth: 'auto',
+                                            px: 1.5,
+                                            py: 0.5,
+                                            borderRadius: '4px',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(60, 64, 67, 0.08)',
+                                            },
+                                            ...(location.pathname.startsWith('/explorer') && {
+                                                backgroundColor: 'rgba(60, 64, 67, 0.12)',
+                                            }),
+                                        }}
+                                    >
+                                        Explorer
+                                    </Button>
+                                </Box>
+                                <Box sx={{ flexGrow: 1 }} />
+                            </>
+                        )}
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
                         <UrlLanguageSelector />
-                        <UserMenu
-                            userName={authentication?.userName}
-                            login={authentication?.login}
-                            onLogout={handleLogout}
-                        />
+                        {isAuthenticated ? (
+                            <UserMenu
+                                userName={authentication?.userName}
+                                login={authentication?.login}
+                                onLogout={handleLogout}
+                            />
+                        ) : (
+                            <Button
+                                onClick={() => handleNavigation('/login')}
+                                size="small"
+                                sx={{
+                                    color: '#202124',
+                                    textTransform: 'uppercase',
+                                    fontSize: '12px',
+                                    fontWeight: 500,
+                                    letterSpacing: '0.5px',
+                                    minWidth: 'auto',
+                                    px: 1.5,
+                                    py: 0.5,
+                                    borderRadius: '4px',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(60, 64, 67, 0.08)',
+                                    },
+                                }}
+                            >
+                                Login
+                            </Button>
+                        )}
                     </Box>
                 </Toolbar>
             </AppBar>

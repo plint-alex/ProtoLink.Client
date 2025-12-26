@@ -121,18 +121,17 @@ class UrlLanguageService {
 
   setLanguage(lang: string) {
     this.currentLanguage = lang
-    
-    // Update URL with new language parameter - DISABLED to prevent routing conflicts
-    // const urlParams = new URLSearchParams(window.location.search)
-    // urlParams.set('lang', lang)
-    // const newUrl = `${window.location.pathname}?${urlParams.toString()}`
-    // window.history.replaceState({}, '', newUrl)
-    
-    // Set global variables for dynamic scripts
+
+    // Update URL with new language parameter and reload to apply
+    const currentUrl = new URL(window.location.href)
+    currentUrl.searchParams.set('lang', lang)
+    window.location.replace(currentUrl.toString())
+
+    // Set global variables for dynamic scripts (in case they run before reload)
     ;(window as any).currentLanguage = lang
     document.body.setAttribute('data-current-language', lang)
-    
-    // Trigger a custom event that dynamic scripts can listen to
+
+    // Trigger a custom event even though the page reloads
     window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lang } }))
   }
 

@@ -11,11 +11,8 @@ export interface LoginCredentials {
 }
 
 export interface RegisterCredentials {
-    login: string
     password: string
     email: string
-    firstName: string
-    lastName: string
 }
 
 export interface RefreshTokenCredentials {
@@ -90,13 +87,24 @@ export const refreshToken = createAsyncThunk<void, RefreshTokenCredentials, { di
     }
 )
 
-export const register = createAsyncThunk<void, { credentials: RegisterCredentials; lang: string }>(
+export interface RegisterResult {
+    success: boolean
+    error?: string
+    emailError?: string
+    userUpdated?: boolean
+}
+
+export const register = createAsyncThunk<RegisterResult, { credentials: RegisterCredentials; lang: string }>(
     'authentication/register',
-    async ({ credentials, lang }) => {
+    async ({ credentials, lang }, { rejectWithValue }) => {
         try {
-            await axios.post(`/api/authentication/register?lang=${lang}`, credentials)
-        } catch (e) {
+            const response = await axios.post<RegisterResult>(`/api/authentication/register?lang=${lang}`, credentials)
+            return response.data
+        } catch (e: any) {
             console.error(e)
+            if (e.response?.data) {
+                return rejectWithValue(e.response.data as RegisterResult)
+            }
             throw e
         }
     }
