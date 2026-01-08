@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from '../../../utility/customAxios'
 import { createAsyncThunk } from '@reduxjs/toolkit'
 
 export interface AddFileParams {

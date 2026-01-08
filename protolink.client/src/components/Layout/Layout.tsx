@@ -1,13 +1,13 @@
 ﻿import CssBaseline from '@mui/material/CssBaseline';
 import { styled } from '@mui/material/styles';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import React, { PropsWithChildren } from 'react';
 import UrlLanguageSelector from '../UrlLanguageSelector';
 import { UserMenu } from './UserMenu';
-// import { useLanguageNavigation } from '../../hooks/useLanguageNavigation'; // Disabled - causing URL conflicts
 import { useAppDispatch, useAppSelector } from '../../store/store';
 import { logout } from '../../store/actions/thunkActions/authentication';
+import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
 
 
 const RootDiv = styled('div')(() => ({
@@ -34,23 +34,23 @@ type FooProps = {
 }
 
 export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
-    const navigate = useNavigate();
+    const navigateWithParams = useNavigationWithParams();
     const location = useLocation();
     const dispatch = useAppDispatch();
     const authentication = useAppSelector((state) => state.authentication);
     const isAuthenticated = Boolean(authentication?.accessToken);
-    
-    // Ensure lang parameter is present on all pages
-    // useLanguageNavigation(); // Disabled - causing URL conflicts
 
     const handleNavigation = (path: string) => {
-        // Navigate directly without adding language parameters
-        navigate(path);
+        navigateWithParams(path);
     };
 
     const handleLogout = () => {
         void dispatch(logout());
-        handleNavigation('/login');
+        // Clean URL parameters when redirecting to login after logout
+        navigateWithParams('/login', {
+            params: { logout: null, returnurl: null },
+            replace: true
+        });
     };
 
     return (

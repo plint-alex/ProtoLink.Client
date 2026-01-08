@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
 import { Grid, Paper, Button, TextField, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
@@ -51,18 +52,9 @@ const StyledHiddenAction = styled('span')({
 
 const Entities: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
+    const navigateWithParams = useNavigationWithParams();
     const dispatch = useAppDispatch();
     const [parentIdToAdd, setParentIdToAdd] = React.useState<string>('');
-
-    const load = React.useCallback((entityId: string | undefined) => {
-        if (entityId) {
-            dispatch(getEntities({ data: entityId ? { parentIds: [entityId] } : {}, storageVariable: 'children'}));
-            dispatch(getEntities({ data: { idsToFindParents: [entityId] }, storageVariable: 'parents' }));
-        } else {
-            dispatch(getEntities({ data: {}, storageVariable: 'children' }));
-        }
-    }, [dispatch]);
 
     const children = useAppSelector((state) => selectEntities(state, 'children'));
     const parents = useAppSelector((state) => selectEntities(state, 'parents'));
@@ -99,12 +91,19 @@ const Entities: React.FC = () => {
     };
 
     const handleNavigate = (entityId: string) => {
-        navigate(`/explorer/${entityId}`);
+        navigateWithParams(`/explorer/${entityId}`);
     };
 
     useEffect(() => {
-        load(id);
-    }, [id, load]);
+        // Reload data when id changes
+        // The deduplication in thunks will prevent actual duplicate requests
+        if (id) {
+            dispatch(getEntities({ data: { parentIds: [id] }, storageVariable: 'children'}));
+            dispatch(getEntities({ data: { idsToFindParents: [id] }, storageVariable: 'parents' }));
+        } else {
+            dispatch(getEntities({ data: {}, storageVariable: 'children' }));
+        }
+    }, [id, dispatch]); // Only depend on id and dispatch to reload when id changes
 
     return (
         <Grid container spacing={3}>
@@ -146,7 +145,7 @@ const Entities: React.FC = () => {
                                             fullWidth
                                             variant="contained"
                                             color="primary"
-                                            onClick={() => navigate('/explorer')}
+                                            onClick={() => navigateWithParams('/explorer')}
                                         >
                                             Go to root
                                         </Button>

@@ -1,15 +1,15 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigationWithParams } from '../hooks/useNavigationWithParams'
 import { ROUTES } from '../resources/routes-constants'
 
 const NotFoundPage: React.FC = () => {
-    const navigate = useNavigate()
+    const navigateWithParams = useNavigationWithParams()
 
     /**
      * Call this function to redirect the user to the homepage.
      */
     const redirectToHomePage = () => {
-        navigate(ROUTES.HOMEPAGE_ROUTE)
+        navigateWithParams(ROUTES.HOMEPAGE_ROUTE)
     }
 
     return (

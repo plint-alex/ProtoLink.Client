@@ -46,51 +46,65 @@ class UrlLanguageService {
     window.history.replaceState({}, '', currentUrl.toString())
   }
 
+  private loadLanguagesPromise: Promise<Language[]> | null = null;
+
   async loadLanguages(): Promise<Language[]> {
     if (this.languages.length > 0) {
       return this.languages
     }
 
-    try {
-      // Fetch language entities from API
-      const response = await fetch('/api/entities/GetEntities', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`
-        },
-        body: JSON.stringify({
-          parentIds: ['00010002-0000-0000-0000-000000000000'], // lang entity parent
-          pageSize: 100,
-          pageNumber: 1
-        })
-      })
+    // Prevent duplicate requests - reuse existing promise if request is in flight
+    if (this.loadLanguagesPromise) {
+      return this.loadLanguagesPromise;
+    }
 
-      if (response.ok) {
-        const data = await response.json()
-        this.languages = data.map((entity: any) => ({
-          id: entity.id,
-          code: entity.code,
-          name: this.getLanguageName(entity.code),
-          flag: this.getLanguageFlag(entity.code)
-        }))
-      } else {
+    this.loadLanguagesPromise = (async () => {
+      try {
+        // Fetch language entities from API
+        const response = await fetch('/api/entities/GetEntities', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`
+          },
+          body: JSON.stringify({
+            parentIds: ['00010002-0000-0000-0000-000000000000'], // lang entity parent
+            skip: 0,
+            take: 100
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          this.languages = data.map((entity: any) => ({
+            id: entity.id,
+            code: entity.code,
+            name: this.getLanguageName(entity.code),
+            flag: this.getLanguageFlag(entity.code)
+          }))
+        } else {
+          // Fallback to default languages
+          this.languages = [
+            { id: '00010002-0002-0000-0000-000000000000', code: 'en-US', name: 'English', flag: '🇺🇸' },
+            { id: '00010002-0001-0000-0000-000000000000', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
+          ]
+        }
+      } catch (error) {
+        console.error('Error loading languages:', error)
         // Fallback to default languages
         this.languages = [
           { id: '00010002-0002-0000-0000-000000000000', code: 'en-US', name: 'English', flag: '🇺🇸' },
           { id: '00010002-0001-0000-0000-000000000000', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
         ]
+      } finally {
+        // Reset promise after completion so it can be retried if needed
+        this.loadLanguagesPromise = null;
       }
-    } catch (error) {
-      console.error('Error loading languages:', error)
-      // Fallback to default languages
-      this.languages = [
-        { id: '00010002-0002-0000-0000-000000000000', code: 'en-US', name: 'English', flag: '🇺🇸' },
-        { id: '00010002-0001-0000-0000-000000000000', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
-      ]
-    }
 
-    return this.languages
+      return this.languages
+    })();
+
+    return this.loadLanguagesPromise;
   }
 
   private getLanguageName(code: string): string {

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Box, Typography, Menu, MenuItem, Avatar, Divider } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
 
 interface UserMenuProps {
     userName?: string;
@@ -43,7 +43,7 @@ const getAvatarColor = (text: string): string => {
 export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout }) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const avatarRef = useRef<HTMLDivElement>(null);
-    const navigate = useNavigate();
+    const navigateWithParams = useNavigationWithParams();
     const open = Boolean(anchorEl);
 
     const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -56,7 +56,11 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout })
 
     const handleLogin = () => {
         handleClose();
-        navigate('/login');
+        // Clean URL parameters when navigating to login
+        navigateWithParams('/login', {
+            params: { logout: null, returnurl: null },
+            replace: true
+        });
     };
 
     const handleLogout = () => {

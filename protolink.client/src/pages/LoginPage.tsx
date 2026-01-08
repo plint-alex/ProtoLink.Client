@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigationWithParams } from '../hooks/useNavigationWithParams';
 import { useAppDispatch, useAppSelector } from '../store/store';
 import {
     Button,
@@ -55,8 +55,7 @@ const schema = yup.object().shape({
 });
 
 const LoginPage: React.FC = () => {
-    const navigate = useNavigate();
-    // const localLocation = useLocation(); // Temporarily disabled
+    const navigateWithParams = useNavigationWithParams();
     const dispatch = useAppDispatch();
     const authData = useAppSelector((state) => state.authentication);
 
@@ -81,7 +80,7 @@ const LoginPage: React.FC = () => {
         //     else
         //         navigate(ROUTES.HOMEPAGE_ROUTE);
         // }
-    }, [authData, navigate]);
+    }, [authData, navigateWithParams]);
 
     const onSubmit = async (data: LoginFormData) => {
         try {
@@ -89,7 +88,11 @@ const LoginPage: React.FC = () => {
                 login: data.login,
                 password: data.password
             }));
-            navigate(ROUTES.HOMEPAGE_ROUTE);
+            // Remove unnecessary URL parameters (logout, returnurl) after successful login
+            navigateWithParams(ROUTES.HOMEPAGE_ROUTE, {
+                params: { logout: null, returnurl: null },
+                replace: true
+            });
         } catch (err: unknown) {
             if (err && typeof err === 'object' && 'response' in err) {
                 const axiosError = err as { response?: { data?: { errorFields?: unknown; error?: string } } };
@@ -174,7 +177,7 @@ const LoginPage: React.FC = () => {
                         <Button
                             variant="text"
                             color="primary"
-                            onClick={() => navigate(ROUTES.REGISTER_ROUTE)}
+                            onClick={() => navigateWithParams(ROUTES.REGISTER_ROUTE)}
                             disabled={isSubmitting}
                         >
                             Register
@@ -184,7 +187,7 @@ const LoginPage: React.FC = () => {
                         <Button
                             variant="text"
                             color="primary"
-                            onClick={() => navigate(ROUTES.HOMEPAGE_ROUTE)}
+                            onClick={() => navigateWithParams(ROUTES.HOMEPAGE_ROUTE)}
                             disabled={isSubmitting}
                         >
                             Back to Home

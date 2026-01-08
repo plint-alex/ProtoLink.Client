@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigationWithParams } from '../hooks/useNavigationWithParams'
 import { useAppDispatch } from '../store/store'
 import {
   Button,
@@ -61,7 +61,7 @@ const schema = yup.object().shape({
 })
 
 const RegisterPage: React.FC = () => {
-  const navigate = useNavigate()
+  const navigateWithParams = useNavigationWithParams()
   const dispatch = useAppDispatch()
 
   const {
@@ -103,9 +103,12 @@ const RegisterPage: React.FC = () => {
         return
       }
 
-      // Success - redirect to login
+      // Success - redirect to login and clean URL parameters
       if (result.success) {
-        navigate(ROUTES.LOGIN_ROUTE)
+        navigateWithParams(ROUTES.LOGIN_ROUTE, {
+          params: { logout: null, returnurl: null },
+          replace: true
+        })
       }
     } catch (err: any) {
       // Handle rejected promise from thunk
@@ -217,7 +220,10 @@ const RegisterPage: React.FC = () => {
             <Button
               variant="text"
               color="primary"
-              onClick={() => navigate(ROUTES.LOGIN_ROUTE)}
+              onClick={() => navigateWithParams(ROUTES.LOGIN_ROUTE, {
+                params: { logout: null, returnurl: null },
+                replace: true
+              })}
               disabled={isSubmitting}
             >
               Back to Sign In

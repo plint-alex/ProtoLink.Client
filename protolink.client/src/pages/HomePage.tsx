@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo } from 'react';
-import { Alert, Box, CircularProgress, Stack, Typography } from '@mui/material';
+import { Alert, CircularProgress, Stack } from '@mui/material';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { loadViewScript } from '../store/actions/thunkActions/entities';
 import { useAppDispatch, useAppSelector } from '../store/store';
@@ -26,15 +26,22 @@ const HomePage: React.FC = () => {
     const loading = entitiesState.loading;
     const error = entitiesState.error;
     const mappings = entitiesState.entityViews?.[entityId] ?? EMPTY_MAPPINGS;
-    const scripts = entitiesState.viewScripts?.[entityId];
+    
+    // Check if we've already attempted to load views for this entity
+    // (even if the result was empty, we don't want to retry infinitely)
+    const hasAttemptedLoad = entitiesState.entityViews?.[entityId] !== undefined;
 
     useEffect(() => {
         if (!entityId) {
             return;
         }
 
-        void dispatch(loadViewScript({ entityId, lang }));
-    }, [dispatch, entityId, lang]);
+        // Only dispatch if we haven't already attempted to load the view data for this entity
+        // This prevents duplicate requests and infinite loops when entityViews is empty
+        if (!hasAttemptedLoad) {
+            void dispatch(loadViewScript({ entityId, lang }));
+        }
+    }, [entityId, lang, hasAttemptedLoad, dispatch]);
 
     const viewId = useMemo(() => {
         if (!mappings || mappings.length === 0) {
@@ -53,36 +60,6 @@ const HomePage: React.FC = () => {
         const candidate = (window as unknown as Record<string, unknown>)[viewId];
         return typeof candidate === 'function' ? (candidate as React.ComponentType<any>) : null;
     }, [viewId, mappings]);
-
-    const originalScript = scripts?.original;
-    const transpiledScript = scripts?.transpiled;
-
-    const renderCodeBlock = (label: string, code: string) => (
-        <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
-                {label}
-            </Typography>
-            <Box
-                component="pre"
-                sx={{
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    fontFamily: 'Roboto Mono, Fira Code, Consolas, monospace',
-                    fontSize: '0.85rem',
-                    p: 2,
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: '#0f172a',
-                    color: '#e2e8f0',
-                    maxHeight: 400,
-                    overflow: 'auto'
-                }}
-            >
-                {code}
-            </Box>
-        </Box>
-    );
 
     return (
         <Stack spacing={2} sx={{ p: 3 }}>
@@ -104,13 +81,6 @@ const HomePage: React.FC = () => {
                 <Alert severity="warning">
                     Dynamic view not available yet for entity {entityId}.
                 </Alert>
-            )}
-
-            {(originalScript || transpiledScript) && (
-                <Stack spacing={2}>
-                    {originalScript && renderCodeBlock('Original Script', originalScript)}
-                    {transpiledScript && renderCodeBlock('Transpiled Script', transpiledScript)}
-                </Stack>
             )}
         </Stack>
     );

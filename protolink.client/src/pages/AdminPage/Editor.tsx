@@ -17,6 +17,20 @@ const Editor: React.FC<EditorProps> = ({
 }) => {
     const [isMaximized, setIsMaximized] = React.useState(false);
     const [showSyntaxHints, setShowSyntaxHints] = React.useState(true);
+    const textFieldRef = React.useRef<HTMLTextAreaElement>(null);
+
+    React.useEffect(() => {
+        // Focus the text field when component mounts (dialog opens)
+        const timeout = setTimeout(() => {
+            if (textFieldRef.current) {
+                textFieldRef.current.focus();
+                // Don't select all text, just focus for editing
+                const length = textFieldRef.current.value.length;
+                textFieldRef.current.setSelectionRange(length, length);
+            }
+        }, 200);
+        return () => clearTimeout(timeout);
+    }, []); // Empty dependency array - only focus on mount, not when value changes
 
     const getLanguageLabel = (lang: string) => {
         switch (lang) {
@@ -150,9 +164,11 @@ const Editor: React.FC<EditorProps> = ({
             <Box sx={{ 
                 flex: 1, 
                 p: 2,
-                minHeight: isMaximized ? 'calc(100vh - 200px)' : '500px'
+                minHeight: isMaximized ? 'calc(100vh - 200px)' : '500px',
+                pointerEvents: 'auto'
             }}>
                 <TextField
+                    inputRef={textFieldRef}
                     fullWidth
                     multiline
                     rows={isMaximized ? 30 : 20}
@@ -160,15 +176,19 @@ const Editor: React.FC<EditorProps> = ({
                     onChange={(e) => onChange(e.target.value)}
                     variant="outlined"
                     placeholder={`Enter your ${language.toUpperCase()} code here...`}
+                    autoFocus
+                    disabled={false}
                     sx={{
                         '& .MuiInputBase-root': {
                             fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
                             fontSize: '14px',
-                            lineHeight: 1.5
+                            lineHeight: 1.5,
+                            pointerEvents: 'auto'
                         },
                         '& .MuiInputBase-input': {
                             resize: 'vertical',
-                            minHeight: isMaximized ? 'calc(100vh - 300px)' : '400px'
+                            minHeight: isMaximized ? 'calc(100vh - 300px)' : '400px',
+                            pointerEvents: 'auto'
                         }
                     }}
                 />
