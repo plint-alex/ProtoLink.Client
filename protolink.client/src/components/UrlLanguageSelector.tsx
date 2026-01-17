@@ -15,6 +15,7 @@ const UrlLanguageSelector: React.FC = () => {
   const [languages, setLanguages] = useState<Language[]>([])
   const [currentLanguage, setCurrentLanguage] = useState<string>('en-US')
   const [loading, setLoading] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     const loadLanguages = async () => {
@@ -61,7 +62,7 @@ const UrlLanguageSelector: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 80 }}>
-      <Tooltip title={currentLanguage} arrow>
+      <Tooltip title={currentLanguage} arrow open={menuOpen ? false : undefined}>
         <FormControl
           size="small"
           sx={{
@@ -91,6 +92,8 @@ const UrlLanguageSelector: React.FC = () => {
           <Select
             value={currentLanguage}
             onChange={handleLanguageChange}
+            onOpen={() => setMenuOpen(true)}
+            onClose={() => setMenuOpen(false)}
             displayEmpty
             variant="outlined"
             renderValue={(selected) => {

@@ -112,7 +112,10 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                             <>
                                 <Box sx={{ display: 'flex', gap: 0.5 }}>
                                     <Button
-                                        onClick={() => handleNavigation('/explorer')}
+                                        onClick={() => {
+                                            const currentPath = location.pathname === '/' ? '' : location.pathname;
+                                            handleNavigation(`/explorer${currentPath}`);
+                                        }}
                                         size="small"
                                         sx={{
                                             color: '#202124',

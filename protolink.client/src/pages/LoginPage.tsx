@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams';
-import { useAppDispatch, useAppSelector } from '../store/store';
+import { useAppDispatch, useAppSelector, store } from '../store/store';
 import {
     Button,
     TextField,
@@ -84,15 +84,47 @@ const LoginPage: React.FC = () => {
 
     const onSubmit = async (data: LoginFormData) => {
         try {
-            await dispatch(loginAction({
+            const result = await dispatch(loginAction({
                 login: data.login,
                 password: data.password
             }));
-            // Remove unnecessary URL parameters (logout, returnurl) after successful login
-            navigateWithParams(ROUTES.HOMEPAGE_ROUTE, {
-                params: { logout: null, returnurl: null },
-                replace: true
-            });
+            
+            // Check if login was rejected (error case)
+            if (loginAction.rejected.match(result)) {
+                // Get error from the rejected value or from authData
+                const errorData = result.payload as any;
+                const errorMessage = errorData?.error || store.getState().authentication?.error || 'An error occurred during login';
+                setError('root', {
+                    type: 'manual',
+                    message: errorMessage
+                });
+                return; // Don't redirect on error
+            }
+            
+            // Check if login was fulfilled successfully
+            if (loginAction.fulfilled.match(result)) {
+                const authData = result.payload;
+                // Only redirect if we have an accessToken and no error
+                if (authData?.accessToken && !authData?.error) {
+                    // Remove unnecessary URL parameters (logout, returnurl) after successful login
+                    navigateWithParams(ROUTES.HOMEPAGE_ROUTE, {
+                        params: { logout: null, returnurl: null },
+                        replace: true
+                    });
+                } else if (authData?.error) {
+                    // Show error from authData
+                    setError('root', {
+                        type: 'manual',
+                        message: authData.error || 'An error occurred during login'
+                    });
+                } else if (!authData?.accessToken) {
+                    // No access token means login failed
+                    setError('root', {
+                        type: 'manual',
+                        message: 'Login failed. Please check your credentials.'
+                    });
+                }
+            }
         } catch (err: unknown) {
             if (err && typeof err === 'object' && 'response' in err) {
                 const axiosError = err as { response?: { data?: { errorFields?: unknown; error?: string } } };

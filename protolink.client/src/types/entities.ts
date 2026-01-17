@@ -19,4 +19,12 @@ export interface Entity {
     hidden?: boolean;
     version?: number;
     creationTime?: string;
+}
+
+export interface Permission {
+    id: string;
+    permissionForId: string;
+    permissionForCode?: string;
+    canWrite: boolean;
+    isUser?: boolean;
 } 

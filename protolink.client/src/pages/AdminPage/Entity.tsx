@@ -10,6 +10,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { styled } from '@mui/material/styles';
 import Editor from './Editor';
 import File from './File';
+import PermissionsEditor from './PermissionsEditor';
 import type { EntityValue } from '../../types/entities';
 import { useFormik } from 'formik';
 import { Dictionary } from '../../types/dictionary';
@@ -252,6 +253,12 @@ const EntityComponent: React.FC = () => {
                                     }}
                                     entities={entities}
                                 />
+                                {entityId && (
+                                    <PermissionsEditor
+                                        entityId={entityId}
+                                        entities={entities}
+                                    />
+                                )}
                             </Grid>
                         </Grid>
                     </Grid>

@@ -20,24 +20,33 @@ export interface RefreshTokenCredentials {
     refreshToken: string
 }
 
-export const login = createAsyncThunk<void, LoginCredentials, { dispatch: AppDispatch }>(
+export const login = createAsyncThunk<authenticationData, LoginCredentials, { dispatch: AppDispatch }>(
     'authentication/login',
-    async ({ login, password, giveinPlaceId }, { dispatch }) => {
+    async ({ login, password, giveinPlaceId }, { dispatch, rejectWithValue }) => {
         try {
             const response = await axios.post(`/api/authentication/login`, { login, password, giveinPlaceId })
+            
             const authData: authenticationData = {
-                userId: response.data.userId,
-                login: response.data.login,
-                userName: response.data.userName,
-                giveinPlaceId: response.data.giveinPlaceId,
-                accessToken: response.data.accessToken,
-                refreshToken: response.data.refreshToken,
-                expirationTime: new Date(response.data.expirationTime).toISOString(),
-                idleTimeout: response.data.idleTimeout,
-                errorFields: [],
+                userId: response.data.userId || '',
+                login: response.data.login || '',
+                userName: response.data.userName || '',
+                giveinPlaceId: response.data.giveinPlaceId || 0,
+                accessToken: response.data.accessToken || '',
+                refreshToken: response.data.refreshToken || '',
+                expirationTime: response.data.expirationTime ? new Date(response.data.expirationTime).toISOString() : new Date().toISOString(),
+                idleTimeout: response.data.idleTimeout || 0,
+                errorFields: response.data.errorFields || [],
                 error: response.data.error || ''
             }
+            
             dispatch(setAuthentication(authData))
+            
+            // If there's an error and no access token, reject the thunk
+            if (authData.error && !authData.accessToken) {
+                return rejectWithValue(authData)
+            }
+            
+            return authData
         } catch (e) {
             console.error(e)
             throw e

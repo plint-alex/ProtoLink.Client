@@ -1,6 +1,6 @@
 import axios from '../../../utility/customAxios'
 import { createAsyncThunk } from '@reduxjs/toolkit'
-import type { Entity } from '../../../types/entities'
+import type { Entity, Permission } from '../../../types/entities'
 import type { EntityViewMapping, ViewData } from '../../../types/view'
 
 type GlobalViewsState = {
@@ -74,6 +74,21 @@ export interface PermissionParams {
     entityId: string
     userId: string
     permission: string
+}
+
+export interface GetPermissionsParams {
+    entityId: string
+}
+
+export interface AddPermissionParams {
+    id: string
+    permissionForId: string
+    canWrite: boolean
+}
+
+export interface RemovePermissionParams {
+    entityId: string
+    permissionForId: string
 }
 
 export interface GetViewParams {
@@ -261,6 +276,52 @@ export const addPermission = createAsyncThunk<void, PermissionParams>(
         }
     }
 )
+
+export const getPermissions = createAsyncThunk<Permission[], GetPermissionsParams>(
+    'entities/getPermissions',
+    async (params) => {
+        try {
+            const response = await axios.get<Permission[]>(`${baseUrl}GetPermissions`, {
+                params: { entityId: params.entityId }
+            });
+            return response.data;
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    }
+);
+
+export const addPermissionNew = createAsyncThunk<void, AddPermissionParams>(
+    'entities/addPermissionNew',
+    async (params) => {
+        try {
+            await axios.post(`${baseUrl}AddPermission`, {
+                id: params.id,
+                permissionForId: params.permissionForId,
+                canWrite: params.canWrite
+            });
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    }
+);
+
+export const removePermission = createAsyncThunk<void, RemovePermissionParams>(
+    'entities/removePermission',
+    async (params) => {
+        try {
+            await axios.post(`${baseUrl}RemovePermission`, {
+                entityId: params.entityId,
+                permissionForId: params.permissionForId
+            });
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    }
+);
 
 export const getView = createAsyncThunk<GetViewResult, GetViewParams>(
     'entities/getView',
