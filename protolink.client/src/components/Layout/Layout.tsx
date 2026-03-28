@@ -1,4 +1,4 @@
-﻿import CssBaseline from '@mui/material/CssBaseline';
+import CssBaseline from '@mui/material/CssBaseline';
 import { styled } from '@mui/material/styles';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { useLocation } from 'react-router-dom';
@@ -86,7 +86,7 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                         }}
                     >
                         <Logo
-                            src="/logo.png"
+                            src="/icon.png"
                             alt="ProtoLink Logo"
                             onError={(e) => {
                                 e.currentTarget.style.display = 'none';
@@ -111,6 +111,33 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                         {isAuthenticated && (
                             <>
                                 <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                    <Button
+                                        onClick={() => {
+                                            if (authentication?.userId) {
+                                                handleNavigation(`/${authentication.userId}`);
+                                            }
+                                        }}
+                                        size="small"
+                                        sx={{
+                                            color: '#202124',
+                                            textTransform: 'uppercase',
+                                            fontSize: '12px',
+                                            fontWeight: 500,
+                                            letterSpacing: '0.5px',
+                                            minWidth: 'auto',
+                                            px: 1.5,
+                                            py: 0.5,
+                                            borderRadius: '4px',
+                                            '&:hover': {
+                                                backgroundColor: 'rgba(60, 64, 67, 0.08)',
+                                            },
+                                            ...(location.pathname === `/${authentication?.userId}` && {
+                                                backgroundColor: 'rgba(60, 64, 67, 0.12)',
+                                            }),
+                                        }}
+                                    >
+                                        Home
+                                    </Button>
                                     <Button
                                         onClick={() => {
                                             const currentPath = location.pathname === '/' ? '' : location.pathname;

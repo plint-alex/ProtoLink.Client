@@ -38,8 +38,7 @@ const File: React.FC<FileProps> = ({ entityId }) => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0] && entityId) {
             const file = e.target.files[0];
-            const fileId = crypto.randomUUID();
-            dispatch(addFile({ entityId, fileId, file }) as any).then(() => {
+            dispatch(addFile({ entityId, file }) as any).then(() => {
                 dispatch(getFiles({ entityIds: [entityId] }) as any);
             });
         }
@@ -51,7 +50,7 @@ const File: React.FC<FileProps> = ({ entityId }) => {
         });
     };
 
-    const getFileUrl = (fileId: string) => `/api/files/getFile/${fileId}`;
+    const getFileUrl = (fileId: string) => `/api/Files/getFile/${fileId}`;
 
     return (
         <div>

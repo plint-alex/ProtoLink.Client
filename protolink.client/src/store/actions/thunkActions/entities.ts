@@ -34,6 +34,8 @@ export interface GetEntitiesParams {
         skip?: number
         take?: number
         fromCache?: boolean
+        /** When true (default), matches API GetEntitiesContract.includeValues */
+        includeValues?: boolean
     }
     storageVariable?: string
     cache?: boolean 
@@ -133,7 +135,8 @@ export const getEntities = createAsyncThunk<{
                 parentIds: params.data?.parentIds,
                 idsToFindParents: params.data?.idsToFindParents,
                 skip: params.data?.skip,
-                take: params.data?.take
+                take: params.data?.take,
+                includeValues: params.data?.includeValues ?? true
             });
             return {
                 data: response.data,
