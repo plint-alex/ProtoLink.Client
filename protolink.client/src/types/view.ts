@@ -1,6 +1,6 @@
 export interface EntityViewMapping {
     entityId: string;
-    viewId: string;
+    viewId: string | null;
 }
 
 export interface ViewData {

@@ -1,7 +1,7 @@
 import queryString from 'query-string'
 
 export interface Language {
-  id: string
+  id?: string
   code: string
   name: string
   flag: string
@@ -11,6 +11,7 @@ class UrlLanguageService {
   private static instance: UrlLanguageService
   private languages: Language[] = []
   private currentLanguage: string = 'en-US'
+  private languageIdByCode: Record<string, string> = {}
 
   private constructor() {
     this.initializeLanguage()
@@ -82,20 +83,28 @@ class UrlLanguageService {
             name: this.getLanguageName(entity.code),
             flag: this.getLanguageFlag(entity.code)
           }))
+          this.languageIdByCode = this.languages.reduce<Record<string, string>>((acc, lang) => {
+            if (lang.id) {
+              acc[lang.code] = lang.id
+            }
+            return acc
+          }, {})
         } else {
           // Fallback to default languages
           this.languages = [
-            { id: '00010002-0002-0000-0000-000000000000', code: 'en-US', name: 'English', flag: '🇺🇸' },
-            { id: '00010002-0001-0000-0000-000000000000', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
+            { id: 'en-US', code: 'en-US', name: 'English', flag: '🇺🇸' },
+            { id: 'ru-RU', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
           ]
+          this.languageIdByCode = {}
         }
       } catch (error) {
         console.error('Error loading languages:', error)
         // Fallback to default languages
         this.languages = [
-          { id: '00010002-0002-0000-0000-000000000000', code: 'en-US', name: 'English', flag: '🇺🇸' },
-          { id: '00010002-0001-0000-0000-000000000000', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
+          { id: 'en-US', code: 'en-US', name: 'English', flag: '🇺🇸' },
+          { id: 'ru-RU', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
         ]
+        this.languageIdByCode = {}
       } finally {
         // Reset promise after completion so it can be retried if needed
         this.loadLanguagesPromise = null;
@@ -131,6 +140,10 @@ class UrlLanguageService {
 
   getCurrentLanguage(): string {
     return this.currentLanguage
+  }
+
+  getLanguageId(langCode: string): string | undefined {
+    return this.languageIdByCode[langCode]
   }
 
   setLanguage(lang: string) {

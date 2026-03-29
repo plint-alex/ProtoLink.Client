@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Alert, CircularProgress, Stack } from '@mui/material';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { loadViewScript } from '../store/actions/thunkActions/entities';
@@ -7,8 +7,8 @@ import type { EntitiesStatePart } from '../store/entitiesSlice';
 import type { EntityViewMapping } from '../types/view';
 import ErrorBoundary from '../ErrorBoundary';
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams';
+import { DEFAULT_HOME_ENTITY_ID } from '../constants/home';
 
-const DEFAULT_HOME_ENTITY_ID = '4cca22a8-bf99-4c52-a753-c820969925c3';
 const EMPTY_MAPPINGS: readonly EntityViewMapping[] = [];
 
 const HomePage: React.FC = () => {
@@ -16,7 +16,6 @@ const HomePage: React.FC = () => {
     const [searchParams] = useSearchParams();
     const dispatch = useAppDispatch();
     const navigateWithParams = useNavigationWithParams();
-    const authData = useAppSelector((state) => state.authentication);
 
     const lang = useMemo(() => {
         const value = searchParams.get('lang');
@@ -31,43 +30,33 @@ const HomePage: React.FC = () => {
     const error = entitiesState.error;
     const mappings = entityId ? (entitiesState.entityViews?.[entityId] ?? EMPTY_MAPPINGS) : EMPTY_MAPPINGS;
     
-    // Check if we've already attempted to load views for this entity
-    // (even if the result was empty, we don't want to retry infinitely)
-    const hasAttemptedLoad = entityId ? (entitiesState.entityViews?.[entityId] !== undefined) : false;
-
-    // Redirect logic: if no entity ID in URL, redirect to user entity or default home entity
+    // Redirect logic: root path always resolves to the public/home entity.
+    // This must stay distinct from a user profile route (/:userId).
     useEffect(() => {
         if (routeEntityId === undefined) {
-            // No entity ID in URL - need to redirect
-            if (authData?.userId && authData?.accessToken) {
-                // User is logged in - redirect to their entity
-                navigateWithParams(`/${authData.userId}`, { replace: true });
-            } else {
-                // User is not logged in - redirect to default home entity
-                navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}`, { replace: true });
-            }
+            navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}`, { replace: true });
         }
-    }, [routeEntityId, authData?.userId, authData?.accessToken, navigateWithParams]);
+    }, [routeEntityId, navigateWithParams]);
 
     useEffect(() => {
         if (!entityId) {
             return;
         }
 
-        // Only dispatch if we haven't already attempted to load the view data for this entity
-        // This prevents duplicate requests and infinite loops when entityViews is empty
-        if (!hasAttemptedLoad) {
-            void dispatch(loadViewScript({ entityId, lang }));
-        }
-    }, [entityId, lang, hasAttemptedLoad, dispatch]);
+        // Reload on entity/lang change so stale empty mappings can recover
+        // after backend/view updates without forcing a hard page refresh.
+        void dispatch(loadViewScript({ entityId, lang }));
+    }, [entityId, lang, dispatch]);
 
     const viewId = useMemo(() => {
         if (!entityId || !mappings || mappings.length === 0) {
             return null;
         }
 
-        const matching = mappings.find((m) => m.entityId === entityId);
-        return matching?.viewId ?? mappings[0]?.viewId ?? null;
+        const norm = (g: string) => g.replace(/-/g, '').toLowerCase();
+        const matching = mappings.find((m) => norm(String(m.entityId)) === norm(entityId));
+        const pick = matching?.viewId ?? mappings[0]?.viewId;
+        return pick ?? null;
     }, [entityId, mappings]);
 
     const DynamicComponent = useMemo(() => {

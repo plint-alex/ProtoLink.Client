@@ -128,7 +128,7 @@ const UrlLanguageSelector: React.FC = () => {
           }}
         >
           {languages.map((lang) => (
-            <MenuItem key={lang.id} value={lang.code}>
+            <MenuItem key={lang.id ?? lang.code} value={lang.code}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography sx={{ fontSize: '1.2em' }}>
                   {lang.flag}

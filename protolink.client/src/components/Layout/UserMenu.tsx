@@ -6,6 +6,11 @@ interface UserMenuProps {
     userName?: string;
     login?: string;
     onLogout: () => void;
+    text: {
+        login: string;
+        logout: string;
+        userDefault: string;
+    };
 }
 
 const getInitials = (name?: string, login?: string): string => {
@@ -40,7 +45,7 @@ const getAvatarColor = (text: string): string => {
     return colors[Math.abs(hash) % colors.length];
 };
 
-export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout }) => {
+export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout, text }) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const avatarRef = useRef<HTMLDivElement>(null);
     const navigateWithParams = useNavigationWithParams();
@@ -70,7 +75,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout })
 
     const initials = getInitials(userName, login);
     const avatarColor = getAvatarColor(userName || login || 'user');
-    const displayName = userName || 'User';
+    const displayName = userName || text.userDefault;
     const displayEmail = login || '';
 
     return (
@@ -176,11 +181,11 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout })
                 )}
                 {userName ? (
                     <MenuItem onClick={handleLogout}>
-                        <Typography sx={{ fontSize: '14px', color: '#202124' }}>Logout</Typography>
+                        <Typography sx={{ fontSize: '14px', color: '#202124' }}>{text.logout}</Typography>
                     </MenuItem>
                 ) : (
                     <MenuItem onClick={handleLogin}>
-                        <Typography sx={{ fontSize: '14px', color: '#202124' }}>Login</Typography>
+                        <Typography sx={{ fontSize: '14px', color: '#202124' }}>{text.login}</Typography>
                     </MenuItem>
                 )}
             </Menu>

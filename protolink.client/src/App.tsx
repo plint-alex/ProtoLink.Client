@@ -5,6 +5,9 @@ import RootComponent from './RootComponent'
 import { persistor, store } from './store/store'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import * as material from '@mui/material'
+import { getEntities, getEntity } from './store/actions/thunkActions/entities'
+import { pickLocalizedName } from './constants/entityParents'
+import { urlLanguageService } from './services/urlLanguageService'
 
 // Expose limited globals for dynamic views
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,7 +41,9 @@ if (!w.react) {
     w['CardActions'] = material.CardActions;
 
     // Internal helpers for dynamic views
+    const existingInternal = w['internal'] ?? {};
     w['internal'] = {
+        ...existingInternal,
         apiRequest: async (path: string, method: string, body?: unknown) => {
             const res = await fetch(`/api/${path}`.replace(/\/+/, '/'), {
                 method,
@@ -47,6 +52,31 @@ if (!w.react) {
             });
             if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
             return res.json();
+        },
+        store: {
+            getState: () => store.getState(),
+            dispatch: (action: unknown) => store.dispatch(action as any),
+        },
+        entities: {
+            getEntities: (params: {
+                data: {
+                    ids?: string[];
+                    idsToFindParents?: string[];
+                    parentIds?: string[];
+                    skip?: number;
+                    take?: number;
+                    includeValues?: boolean;
+                };
+                storageVariable?: string;
+                cache?: boolean;
+            }) => store.dispatch(getEntities(params as any)),
+            getEntity: (params: { id: string; version?: number; lang?: string; fromCache?: boolean }) =>
+                store.dispatch(getEntity(params)),
+        },
+        localization: {
+            getLanguageId: (langCode: string) => urlLanguageService.getLanguageId(langCode),
+            pickLocalizedName: (values: unknown[], lang: string | undefined, fallback: string) =>
+                pickLocalizedName(values as any, lang, fallback, (langCode) => urlLanguageService.getLanguageId(langCode)),
         },
     };
     

@@ -19,6 +19,14 @@ function getGlobalViewsState(): GlobalViewsState {
   return g.__protolinkViews as GlobalViewsState
 }
 
+function simpleHash(input: string): string {
+    let hash = 0;
+    for (let i = 0; i < input.length; i += 1) {
+        hash = (hash * 31 + input.charCodeAt(i)) | 0;
+    }
+    return String(hash);
+}
+
 export interface GetEntityParams {
     id: string
     version?: number
@@ -364,15 +372,57 @@ export const loadViewScript = createAsyncThunk<LoadViewScriptResult, LoadViewScr
             });
 
             const viewData = response.data ?? { scripts: '', entityViews: [] };
-            const scriptText = viewData.scripts ?? '';
+            let scriptText = viewData.scripts ?? '';
             const gv = getGlobalViewsState();
 
-            if (scriptText && !gv.loadedViewIds.has(entityId)) {
+            // Some API nodes currently return only mappings from GetView.
+            // Fallback to per-view endpoint so homepage can still render.
+            if (!scriptText && (viewData.entityViews?.length ?? 0) > 0) {
+                const chunks: string[] = [];
+                for (const mapping of viewData.entityViews) {
+                    if (!mapping.viewId) {
+                        continue;
+                    }
+
+                    try {
+                        const scriptResponse = await axios.get<string>(`${baseUrl}getViewScriptSimple/${mapping.viewId}`);
+                        const payload = typeof scriptResponse.data === 'string' ? scriptResponse.data : '';
+                        if (payload.trim()) {
+                            chunks.push(payload);
+                        }
+                    } catch (scriptError) {
+                        console.warn('[loadViewScript] fallback script fetch failed', mapping.viewId, scriptError);
+                    }
+                }
+
+                if (chunks.length > 0) {
+                    scriptText = chunks.join('\n');
+                }
+            }
+
+            const viewKey =
+                (viewData.entityViews || [])
+                    .map((m) => m.viewId)
+                    .filter((v): v is string => v != null && v !== '')
+                    .sort()
+                    .join('|') || entityId;
+            const scriptFingerprint = scriptText ? `${scriptText.length}:${simpleHash(scriptText)}` : 'noscript';
+            const cacheKey = `${viewKey}:${scriptFingerprint}`;
+
+            const hasAllMappedComponents =
+                (viewData.entityViews || [])
+                    .map((m) => m.viewId)
+                    .filter((v): v is string => !!v)
+                    .every((id) => typeof (window as any)[id] === 'function');
+
+            if (scriptText && (!gv.loadedViewIds.has(cacheKey) || !hasAllMappedComponents)) {
                 const script = document.createElement('script');
                 script.type = 'text/javascript';
-                script.text = scriptText;
+                // Isolate top-level declarations (e.g. const React = ...) per dynamic view payload
+                // so scripts from different pages can coexist without global redeclare errors.
+                script.text = `(function(){\n${scriptText}\n})();`;
                 document.body.appendChild(script);
-                gv.loadedViewIds.add(entityId);
+                gv.loadedViewIds.add(cacheKey);
             }
 
             gv.cacheByEntityId[entityId] = viewData.entityViews || [];
@@ -386,7 +436,7 @@ export const loadViewScript = createAsyncThunk<LoadViewScriptResult, LoadViewScr
                 entityId,
                 entityViews: viewData.entityViews || [],
                 originalScript: normalize(viewData.originalScripts),
-                transpiledScript: normalize(viewData.scripts)
+                transpiledScript: normalize(scriptText)
             };
         } catch (e) {
             console.error('[loadViewScript] failed to load view', e);

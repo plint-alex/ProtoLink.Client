@@ -26,13 +26,14 @@ const RootComponent: React.FC = () => {
             <Layout name={'Layout'}>
                 <Routes>
                         <Route path={ROUTES.HOMEPAGE_ROUTE} element={<HomePage />} />
-                        <Route path={ROUTES.HOMEPAGE_ROUTE + '/:id'} element={<HomePage />} />
                         <Route path={ROUTES.TEST_ROUTE} element={<TestPage />} />
                         <Route path={ROUTES.TEST_ROUTE + '/:id'} element={<TestPage />} />
                         <Route path={ROUTES.EXPLORER_ROUTE} element={<AdminPage />} />
                         <Route path={ROUTES.EXPLORER_ROUTE + '/:id'} element={<AdminPage />} />
                         <Route path={ROUTES.LOGIN_ROUTE} element={<LoginPage />} />
                         <Route path={ROUTES.REGISTER_ROUTE} element={<RegisterPage />} />
+                        {/* After static paths: entity GUID in URL (user profile, etc.) */}
+                        <Route path="/:id" element={<HomePage />} />
                         <Route path="*" element={<NotFoundPage />} />
                 </Routes>
             </Layout>
