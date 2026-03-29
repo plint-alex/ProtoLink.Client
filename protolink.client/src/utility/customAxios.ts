@@ -4,6 +4,13 @@ import { persistConfig } from '../store/persistConfig';
 import type { RootState } from '../store/store';
 const CustomAxios = axios.create()
 
+const isTextRequest = (config: any): boolean => {
+    const headerValue =
+        config?.headers?.['X-ProtoLink-Text-Request'] ??
+        config?.headers?.['x-protolink-text-request']
+    return headerValue === '1' || headerValue === 1 || headerValue === true
+}
+
 //const toCamelCase: any = (object: any) => {
 //    let transformedObject = object
 //    if (typeof object === 'object' && object !== null) {
@@ -46,6 +53,19 @@ const CustomAxios = axios.create()
 
 CustomAxios.interceptors.response.use(
     (response) => {
+        if (isTextRequest(response.config)) {
+            const endpoint = response.config.url || 'unknown-url'
+            const payload = response.config.data || {}
+            const responseData = response.data
+            const count = Array.isArray(responseData) ? responseData.length : 1
+            console.log('[TextRequest][Response]', JSON.stringify({
+                endpoint,
+                status: response.status,
+                request: payload,
+                resultCount: count,
+            }))
+        }
+
         //response.data = toCamelCase(response.data)
         // Log the final URL that was actually sent for getEntity requests
         if (response.config.url && response.config.url.includes('getEntity')) {
@@ -77,6 +97,14 @@ CustomAxios.interceptors.request.use(
                 //config.data = toSnackCase(config.data)
         config.headers.Authorization = 'Bearer ' + state?.authentication?.accessToken
         
+        if (isTextRequest(config)) {
+            console.log('[TextRequest][Request]', JSON.stringify({
+                endpoint: config.url,
+                method: config.method,
+                payload: config.data || {},
+            }))
+        }
+
         // Log request URL and params for debugging
         if (config.url && config.url.includes('getEntity')) {
             const fullUrl = config.baseURL ? `${config.baseURL}${config.url}` : config.url;

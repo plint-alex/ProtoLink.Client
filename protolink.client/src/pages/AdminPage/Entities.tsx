@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
 import { Grid, Paper, Button, TextField, IconButton, Tooltip } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,6 +11,8 @@ import { styled } from '@mui/material/styles';
 import { selectEntities, useAppDispatch, useAppSelector } from '../../store/store';
 import { getEntities, deleteEntity, addParent, addEntityAndSelect } from '../../store/actions/thunkActions/entities';
 import type { Entity } from '../../types/entities';
+import { textCatalogService } from '../../services/textCatalogService';
+import { SYSTEM_PAGE_CODES } from '../../resources/routes-constants';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -52,9 +54,13 @@ const StyledHiddenAction = styled('span')({
 
 const Entities: React.FC = () => {
     const { id } = useParams<{ id: string }>();
+    const location = useLocation();
     const navigateWithParams = useNavigationWithParams();
     const dispatch = useAppDispatch();
     const [parentIdToAdd, setParentIdToAdd] = React.useState<string>('');
+    const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
+    const [texts, setTexts] = React.useState<Record<string, string>>({});
+    const t = React.useCallback((code: string) => texts[code] || code, [texts]);
 
     const children = useAppSelector((state) => selectEntities(state, 'children'));
     const parents = useAppSelector((state) => selectEntities(state, 'parents'));
@@ -105,6 +111,29 @@ const Entities: React.FC = () => {
         }
     }, [id, dispatch]); // Only depend on id and dispatch to reload when id changes
 
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            try {
+                const loadedTexts = await textCatalogService.loadPageTexts({
+                    lang,
+                    routeEntityId: id ?? null,
+                    systemPageCode: SYSTEM_PAGE_CODES.EXPLORER_ROOT,
+                    pathname: location.pathname,
+                });
+                if (!cancelled) {
+                    setTexts((prev) => ({ ...prev, ...loadedTexts }));
+                }
+            } catch (error) {
+                console.error('[Explorer] failed to load page texts', error);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id, lang, location.pathname]);
+
     return (
         <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
@@ -112,7 +141,7 @@ const Entities: React.FC = () => {
                     <StyledTable>
                         <thead>
                             <tr>
-                                <th>Parents</th>
+                                <th>{t('explorer-parents')}</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -120,7 +149,7 @@ const Entities: React.FC = () => {
                             <tr>
                                 <td>
                                     <TextField
-                                        label="ParentId to add"
+                                        label={t('explorer-parent-id-to-add')}
                                         margin="none"
                                         fullWidth
                                         value={parentIdToAdd}
@@ -128,7 +157,7 @@ const Entities: React.FC = () => {
                                     />
                                 </td>
                                 <td>
-                                    <Tooltip title="Add parent">
+                                    <Tooltip title={t('explorer-add-parent')}>
                                         <span>
                                             <IconButton onClick={handleAddParent} color="primary" disabled={!parentIdToAdd}>
                                                 <AddIcon />
@@ -147,7 +176,7 @@ const Entities: React.FC = () => {
                                             color="primary"
                                             onClick={() => navigateWithParams('/explorer')}
                                         >
-                                            Go to root
+                                            {t('explorer-go-to-root')}
                                         </Button>
                                     </td>
                                 </tr>
@@ -159,14 +188,14 @@ const Entities: React.FC = () => {
                                     </StyledAction>
                                     <td>
                                         <StyledHiddenAction>
-                                            <Tooltip title={`Copy ${entity.id}`}>
+                                            <Tooltip title={`${t('explorer-copy')} ${entity.id}`}>
                                                 {/*<CopyToClipboard text={entity.id}>*/}
                                                     <IconButton size="small" aria-label="CopyEntityId">
                                                         <FileCopyIcon />
                                                     </IconButton>
                                                 {/*</CopyToClipboard>*/}
                                             </Tooltip>
-                                            <Tooltip title="Remove entity">
+                                            <Tooltip title={t('explorer-remove-entity')}>
                                                 <IconButton
                                                     size="small"
                                                     aria-label="RemoveEntity"
@@ -188,14 +217,14 @@ const Entities: React.FC = () => {
                     <StyledTable>
                         <thead>
                             <tr>
-                                <th>Children</th>
+                                <th>{t('explorer-children')}</th>
                                 <StyledActionCell></StyledActionCell>
                             </tr>
                         </thead>
                         <tbody>
                             {!children && (
                                 <tr>
-                                    <td colSpan={2}>Loading...</td>
+                                    <td colSpan={2}>{t('explorer-loading')}</td>
                                 </tr>
                             )}
                             {children.map((entity: Entity) => (
@@ -205,14 +234,14 @@ const Entities: React.FC = () => {
                                     </StyledAction>
                                     <td>
                                         <StyledHiddenAction>
-                                            <Tooltip title={`Copy ${entity.id}`}>
+                                            <Tooltip title={`${t('explorer-copy')} ${entity.id}`}>
                                                 {/*<CopyToClipboard text={entity.id}>*/}
                                                     <IconButton size="small" aria-label="CopyEntityId">
                                                         <FileCopyIcon />
                                                     </IconButton>
                                                {/* </CopyToClipboard>*/}
                                             </Tooltip>
-                                            <Tooltip title="Remove entity">
+                                            <Tooltip title={t('explorer-remove-entity')}>
                                                 <IconButton
                                                     size="small"
                                                     aria-label="RemoveEntity"
@@ -233,7 +262,7 @@ const Entities: React.FC = () => {
                         color="primary"
                         onClick={() => handleAddEntity(id)}
                     >
-                        Add entity
+                        {t('explorer-add-entity')}
                     </Button>
                 </StyledPaper>
             </Grid>

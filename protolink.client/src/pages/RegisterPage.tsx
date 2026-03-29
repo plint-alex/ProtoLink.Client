@@ -1,4 +1,5 @@
 import React from 'react'
+import { useLocation } from 'react-router-dom'
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams'
 import { useAppDispatch } from '../store/store'
 import {
@@ -14,10 +15,12 @@ import {
 import { styled } from '@mui/material/styles'
 import { register as registerAction } from '../store/actions/thunkActions/authentication'
 import { ROUTES } from '../resources/routes-constants'
+import { SYSTEM_PAGE_CODES } from '../resources/routes-constants'
 import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { urlLanguageService } from '../services/urlLanguageService'
+import { textCatalogService } from '../services/textCatalogService'
 
 const RegisterContainer = styled(Container)(({ theme }) => ({
   marginTop: theme.spacing(8),
@@ -51,18 +54,28 @@ interface RegisterFormData {
   confirmPassword: string
 }
 
-const schema = yup.object().shape({
-  email: yup.string().email('Enter a valid email').required('Email is required'),
-  password: yup.string().min(5, 'Password must be at least 5 characters').required('Password is required'),
-  confirmPassword: yup
-    .string()
-    .oneOf([yup.ref('password')], 'Passwords must match')
-    .required('Please confirm your password'),
-})
-
 const RegisterPage: React.FC = () => {
+  const location = useLocation()
   const navigateWithParams = useNavigationWithParams()
   const dispatch = useAppDispatch()
+  const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search])
+  const [texts, setTexts] = React.useState<Record<string, string>>({})
+  const t = React.useCallback((code: string) => texts[code] || code, [texts])
+  const schema = React.useMemo(
+    () =>
+      yup.object().shape({
+        email: yup.string().email(t('register-validation-email-invalid')).required(t('register-validation-email-required')),
+        password: yup
+          .string()
+          .min(5, t('register-validation-password-min'))
+          .required(t('register-validation-password-required')),
+        confirmPassword: yup
+          .string()
+          .oneOf([yup.ref('password')], t('register-validation-password-match'))
+          .required(t('register-validation-confirm-password-required')),
+      }),
+    [t]
+  )
 
   const {
     register: formRegister,
@@ -72,6 +85,28 @@ const RegisterPage: React.FC = () => {
   } = useForm<RegisterFormData>({
     resolver: yupResolver(schema),
   })
+
+  React.useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const loadedTexts = await textCatalogService.loadPageTexts({
+          lang,
+          systemPageCode: SYSTEM_PAGE_CODES.REGISTER,
+          pathname: location.pathname,
+        })
+        if (!cancelled) {
+          setTexts((prev) => ({ ...prev, ...loadedTexts }))
+        }
+      } catch (error) {
+        console.error('[RegisterPage] failed to load page texts', error)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [lang, location.pathname])
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
@@ -89,7 +124,7 @@ const RegisterPage: React.FC = () => {
       if (result.emailError) {
         setError('root', {
           type: 'manual',
-          message: `Email sending failed: ${result.emailError}. Please try again later.`,
+          message: `${t('register-email-send-failed-prefix')} ${result.emailError}. ${t('register-error-try-later')}`,
         })
         return
       }
@@ -117,12 +152,12 @@ const RegisterPage: React.FC = () => {
         if (errorData.emailError) {
           setError('root', {
             type: 'manual',
-            message: `Email sending failed: ${errorData.emailError}. Please try again later.`,
+            message: `${t('register-email-send-failed-prefix')} ${errorData.emailError}. ${t('register-error-try-later')}`,
           })
         } else {
           setError('root', {
             type: 'manual',
-            message: errorData.error || 'An error occurred during registration',
+            message: errorData.error || t('register-error-generic'),
           })
         }
       } else if (err && typeof err === 'object' && 'response' in err) {
@@ -132,24 +167,24 @@ const RegisterPage: React.FC = () => {
           if (data.errorFields) {
             setError('root', {
               type: 'manual',
-              message: 'Registration data is invalid. Please check the fields.',
+              message: t('register-error-invalid-fields'),
             })
           } else if (data.emailError) {
             setError('root', {
               type: 'manual',
-              message: `Email sending failed: ${data.emailError}. Please try again later.`,
+              message: `${t('register-email-send-failed-prefix')} ${data.emailError}. ${t('register-error-try-later')}`,
             })
           } else {
             setError('root', {
               type: 'manual',
-              message: data.error || 'An error occurred during registration',
+              message: data.error || t('register-error-generic'),
             })
           }
         }
       } else {
         setError('root', {
           type: 'manual',
-          message: 'Network error. Please try again later.',
+          message: t('register-error-network'),
         })
       }
     }
@@ -159,7 +194,7 @@ const RegisterPage: React.FC = () => {
     <RegisterContainer maxWidth="xs">
       <RegisterPaper elevation={3}>
         <Typography component="h1" variant="h5">
-          Create a new account
+          {t('register-title')}
         </Typography>
 
         {errors.root && (
@@ -175,7 +210,7 @@ const RegisterPage: React.FC = () => {
             required
             fullWidth
             id="email"
-            label="Email"
+            label={t('register-field-email')}
             type="email"
             autoComplete="email"
             disabled={isSubmitting}
@@ -188,7 +223,7 @@ const RegisterPage: React.FC = () => {
             margin="normal"
             required
             fullWidth
-            label="Password"
+            label={t('register-field-password')}
             type="password"
             id="password"
             autoComplete="new-password"
@@ -202,7 +237,7 @@ const RegisterPage: React.FC = () => {
             margin="normal"
             required
             fullWidth
-            label="Confirm Password"
+            label={t('register-field-confirm-password')}
             type="password"
             id="confirmPassword"
             autoComplete="new-password"
@@ -213,7 +248,7 @@ const RegisterPage: React.FC = () => {
           />
 
           <SubmitButton type="submit" fullWidth variant="contained" color="primary" disabled={isSubmitting}>
-            {isSubmitting ? <CircularProgress size={24} /> : 'Register'}
+            {isSubmitting ? <CircularProgress size={24} /> : t('register-submit')}
           </SubmitButton>
 
           <Grid container spacing={2} justifyContent="space-between">
@@ -226,7 +261,7 @@ const RegisterPage: React.FC = () => {
               })}
               disabled={isSubmitting}
             >
-              Back to Sign In
+              {t('register-back-sign-in')}
             </Button>
           </Grid>
         </RegisterForm>

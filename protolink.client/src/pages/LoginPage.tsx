@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams';
 import { useAppDispatch, useAppSelector, store } from '../store/store';
 import {
@@ -14,9 +15,11 @@ import {
 import { styled } from '@mui/material/styles';
 import { login as loginAction } from '../store/actions/thunkActions/authentication';
 import { ROUTES } from '../resources/routes-constants';
+import { SYSTEM_PAGE_CODES } from '../resources/routes-constants';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { textCatalogService } from '../services/textCatalogService';
 
 const LoginContainer = styled(Container)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -49,24 +52,30 @@ interface LoginFormData {
     password: string;
 }
 
-const schema = yup.object().shape({
-    login: yup.string().required('Login is required'),
-    password: yup.string().required('Password is required'),
-});
-
 const LoginPage: React.FC = () => {
+    const location = useLocation();
     const navigateWithParams = useNavigationWithParams();
     const dispatch = useAppDispatch();
     const authData = useAppSelector((state) => state.authentication);
+    const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
+    const [texts, setTexts] = React.useState<Record<string, string>>({});
+    const t = React.useCallback((code: string) => texts[code] || code, [texts]);
+
+    const schema = React.useMemo(
+        () =>
+            yup.object().shape({
+                login: yup.string().required(t('login-validation-login-required')),
+                password: yup.string().required(t('login-validation-password-required')),
+            }),
+        [t]
+    );
 
     const {
         register,
         handleSubmit,
         formState: { errors, isSubmitting },
         setError,
-    } = useForm<LoginFormData>({
-        resolver: yupResolver(schema),
-    });
+    } = useForm<LoginFormData>({ resolver: yupResolver(schema) });
 
     useEffect(() => {
         // Temporarily disabled to test routing
@@ -82,6 +91,28 @@ const LoginPage: React.FC = () => {
         // }
     }, [authData, navigateWithParams]);
 
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            try {
+                const loadedTexts = await textCatalogService.loadPageTexts({
+                    lang,
+                    systemPageCode: SYSTEM_PAGE_CODES.LOGIN,
+                    pathname: location.pathname,
+                });
+                if (!cancelled) {
+                    setTexts((prev) => ({ ...prev, ...loadedTexts }));
+                }
+            } catch (error) {
+                console.error('[LoginPage] failed to load page texts', error);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [lang, location.pathname]);
+
     const onSubmit = async (data: LoginFormData) => {
         try {
             const result = await dispatch(loginAction({
@@ -93,7 +124,8 @@ const LoginPage: React.FC = () => {
             if (loginAction.rejected.match(result)) {
                 // Get error from the rejected value or from authData
                 const errorData = result.payload as any;
-                const errorMessage = errorData?.error || store.getState().authentication?.error || 'An error occurred during login';
+                const errorMessage =
+                    errorData?.error || store.getState().authentication?.error || t('login-error-generic');
                 setError('root', {
                     type: 'manual',
                     message: errorMessage
@@ -115,13 +147,13 @@ const LoginPage: React.FC = () => {
                     // Show error from authData
                     setError('root', {
                         type: 'manual',
-                        message: authData.error || 'An error occurred during login'
+                        message: authData.error || t('login-error-generic')
                     });
                 } else if (!authData?.accessToken) {
                     // No access token means login failed
                     setError('root', {
                         type: 'manual',
-                        message: 'Login failed. Please check your credentials.'
+                        message: t('login-error-failed')
                     });
                 }
             }
@@ -132,19 +164,19 @@ const LoginPage: React.FC = () => {
                     if (axiosError.response.data.errorFields) {
                         setError('root', {
                             type: 'manual',
-                            message: 'Please check your credentials'
+                            message: t('login-error-check-credentials')
                         });
                     } else {
                         setError('root', {
                             type: 'manual',
-                            message: axiosError.response.data.error || 'An error occurred during login'
+                            message: axiosError.response.data.error || t('login-error-generic')
                         });
                     }
                 }
             } else {
                 setError('root', {
                     type: 'manual',
-                    message: 'Network error. Please try again later.'
+                    message: t('login-error-network')
                 });
             }
         }
@@ -154,7 +186,7 @@ const LoginPage: React.FC = () => {
         <LoginContainer maxWidth="xs">
             <LoginPaper elevation={3}>
                 <Typography component="h1" variant="h5">
-                    Sign in
+                    {t('login-title')}
                 </Typography>
 
                 {errors.root && (
@@ -170,7 +202,7 @@ const LoginPage: React.FC = () => {
                         required
                         fullWidth
                         id="login"
-                        label="Login"
+                        label={t('login-field-login')}
                         autoComplete="username"
                         autoFocus
                         disabled={isSubmitting}
@@ -184,7 +216,7 @@ const LoginPage: React.FC = () => {
                         margin="normal"
                         required
                         fullWidth
-                        label="Password"
+                        label={t('login-field-password')}
                         type="password"
                         id="password"
                         autoComplete="current-password"
@@ -201,7 +233,7 @@ const LoginPage: React.FC = () => {
                         color="primary"
                         disabled={isSubmitting}
                     >
-                        {isSubmitting ? <CircularProgress size={24} /> : 'Sign In'}
+                        {isSubmitting ? <CircularProgress size={24} /> : t('login-submit')}
                     </SubmitButton>
 
                 <Grid container spacing={2}>
@@ -212,7 +244,7 @@ const LoginPage: React.FC = () => {
                             onClick={() => navigateWithParams(ROUTES.REGISTER_ROUTE)}
                             disabled={isSubmitting}
                         >
-                            Register
+                            {t('login-register')}
                         </Button>
                     </Grid>
                     <Grid item xs>
@@ -222,7 +254,7 @@ const LoginPage: React.FC = () => {
                             onClick={() => navigateWithParams(ROUTES.HOMEPAGE_ROUTE)}
                             disabled={isSubmitting}
                         >
-                            Back to Home
+                            {t('login-back-home')}
                         </Button>
                     </Grid>
                 </Grid>

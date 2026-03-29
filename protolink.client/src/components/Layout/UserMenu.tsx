@@ -13,7 +13,7 @@ interface UserMenuProps {
     };
 }
 
-const getInitials = (name?: string, login?: string): string => {
+const getInitials = (name?: string, login?: string, fallback?: string): string => {
     if (name) {
         const parts = name.trim().split(/\s+/);
         if (parts.length >= 2) {
@@ -24,7 +24,10 @@ const getInitials = (name?: string, login?: string): string => {
     if (login) {
         return login.substring(0, 2).toUpperCase();
     }
-    return 'U';
+    if (fallback) {
+        return fallback.substring(0, 2).toUpperCase();
+    }
+    return '?';
 };
 
 const getAvatarColor = (text: string): string => {
@@ -73,8 +76,8 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout, t
         onLogout();
     };
 
-    const initials = getInitials(userName, login);
-    const avatarColor = getAvatarColor(userName || login || 'user');
+    const initials = getInitials(userName, login, text.userDefault);
+    const avatarColor = getAvatarColor(userName || login || text.userDefault || 'x');
     const displayName = userName || text.userDefault;
     const displayEmail = login || '';
 
