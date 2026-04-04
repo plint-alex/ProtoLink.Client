@@ -7,7 +7,7 @@ import type { EntitiesStatePart } from '../store/entitiesSlice';
 import type { EntityViewMapping } from '../types/view';
 import ErrorBoundary from '../ErrorBoundary';
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams';
-import { DEFAULT_HOME_ENTITY_ID } from '../constants/home';
+import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../constants/home';
 
 const EMPTY_MAPPINGS: readonly EntityViewMapping[] = [];
 
@@ -34,7 +34,9 @@ const HomePage: React.FC = () => {
     // This must stay distinct from a user profile route (/:userId).
     useEffect(() => {
         if (routeEntityId === undefined) {
-            navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}`, { replace: true });
+            navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}?lang=${encodeURIComponent(DEFAULT_HOME_LANG)}`, {
+                replace: true,
+            });
         }
     }, [routeEntityId, navigateWithParams]);
 
@@ -85,7 +87,9 @@ const HomePage: React.FC = () => {
             )}
 
             {error && (
-                <Alert severity="error">{error}</Alert>
+                <Alert severity="error" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {error}
+                </Alert>
             )}
 
             {DynamicComponent && (

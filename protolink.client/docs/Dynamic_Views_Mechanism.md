@@ -28,11 +28,30 @@ This document explains how the legacy app serves dynamic pages via API and rende
   - Appends the transpiled code to `result.Scripts`.
 - Returns `{ Scripts, EntityViews }`. Results are cached briefly in-memory.
 
+### Server: ES module import rewrite and allowlist
+
+Before TypeScript/JSX transpile, `GetView` rewrites a **subset** of ES module syntax to `window[...]` assignments:
+
+- `import React from 'react'` becomes `const React = window['React']`.
+- `import { Box } from '@mui/material'` becomes `const Box = window['Box']` (and similar for other `@mui/*` / `mui` imports resolved to globals on the host).
+- `export default MyComponent` becomes `window['{id}'] = MyComponent` (the server then substitutes the real view GUID for `{id}`).
+- A **single-line** `export default function Name(...)` is rewritten to `function Name(...)` plus a trailing `window['{id}'] = Name`.
+
+**Allowed module specifiers** (anything else returns HTTP 422 from `GetView` / `GetViewScriptSimple`):
+
+- `react`
+- `mui`
+- `@mui/*` (e.g. `@mui/material`)
+
+**Not allowed:** side-effect-only imports such as `import 'react'` (use a binding import instead). Type-only lines `import type ...` are stripped.
+
+If a full component cannot use a one-line `export default function ...`, declare the function first, then add a final line `export default MyComponent`.
+
 ### Client bootstrap: globals on `window`
 
-In `App.js`, selected libraries and app utilities are exposed on `window` so dynamic components can import them without bundler imports:
+In `protolink.client/src/App.tsx`, selected libraries and app utilities are exposed on `window` so dynamic views can use the rewrite above:
 
-- `window['react'] = React`
+- `window['react'] = React` and `window['React'] = React`
 - `window['redux'] = { bindActionCreators }`, `window['react-redux'] = { connect }`
 - `window['query-string'] = queryString`, `window['redux-form'] = { Field, reduxForm }`
 - `window['@material-ui/styles'] = { ThemeProvider, withStyles }`

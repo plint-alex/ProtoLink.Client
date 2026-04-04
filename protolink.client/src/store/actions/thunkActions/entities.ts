@@ -1,4 +1,5 @@
 import axios from '../../../utility/customAxios'
+import { isAxiosError } from 'axios'
 import { createAsyncThunk } from '@reduxjs/toolkit'
 import type { Entity, Permission } from '../../../types/entities'
 import type { EntityViewMapping, ViewData } from '../../../types/view'
@@ -112,6 +113,42 @@ export interface GetViewResult {
         entityId: string
         viewId: string | null
     }>
+}
+
+/** Body shape from API GetView when it returns 422 (camelCase JSON). */
+export interface GetViewErrorBody {
+    code?: string
+    message?: string
+    detail?: string
+    contextEntityId?: string
+    viewEntityId?: string
+    viewScriptValueSlotId?: string
+    remediation?: string
+    disallowedModule?: string
+    allowedModulesSummary?: string
+}
+
+function formatGetViewUserMessage(error: unknown): string {
+    if (isAxiosError(error) && error.response?.data && typeof error.response.data === 'object') {
+        const d = error.response.data as GetViewErrorBody
+        const head =
+            typeof d.code === 'string' && d.code.trim() !== '' ? `[${d.code}]` : ''
+        const parts = [
+            head,
+            d.message,
+            d.detail,
+            d.disallowedModule ? `Module: ${d.disallowedModule}` : '',
+            d.allowedModulesSummary ? `Allowed: ${d.allowedModulesSummary}` : '',
+            d.remediation,
+        ].filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+        if (parts.length > 0) {
+            return parts.join('\n\n')
+        }
+    }
+    if (isAxiosError(error)) {
+        return error.message
+    }
+    return error instanceof Error ? error.message : String(error)
 }
 
 const baseUrl = '/api/entities/';
@@ -334,9 +371,9 @@ export const removePermission = createAsyncThunk<void, RemovePermissionParams>(
     }
 );
 
-export const getView = createAsyncThunk<GetViewResult, GetViewParams>(
+export const getView = createAsyncThunk<GetViewResult, GetViewParams, { rejectValue: string }>(
     'entities/getView',
-    async ({ id, lang }) => {
+    async ({ id, lang }, { rejectWithValue }) => {
         try {
             const response = await axios.get(`${baseUrl}getView/${id}`, {
                 params: { lang }
@@ -344,7 +381,7 @@ export const getView = createAsyncThunk<GetViewResult, GetViewParams>(
             return response.data;
         } catch (e) {
             console.error(e);
-            throw e;
+            return rejectWithValue(formatGetViewUserMessage(e));
         }
     }
 );
@@ -363,9 +400,13 @@ type LoadViewScriptResult = {
 
 type ViewDataResponse = ViewData & { originalScripts?: string };
 
-export const loadViewScript = createAsyncThunk<LoadViewScriptResult, LoadViewScriptParams>(
+export const loadViewScript = createAsyncThunk<
+    LoadViewScriptResult,
+    LoadViewScriptParams,
+    { rejectValue: string }
+>(
     'entities/loadViewScript',
-    async ({ entityId, lang }) => {
+    async ({ entityId, lang }, { rejectWithValue }) => {
         try {
             const response = await axios.get<ViewDataResponse>(`${baseUrl}getView/${entityId}`, {
                 params: { lang }
@@ -440,7 +481,7 @@ export const loadViewScript = createAsyncThunk<LoadViewScriptResult, LoadViewScr
             };
         } catch (e) {
             console.error('[loadViewScript] failed to load view', e);
-            throw e;
+            return rejectWithValue(formatGetViewUserMessage(e));
         }
     }
 );

@@ -207,7 +207,10 @@ const entitiesSlice = createSlice({
             })
             .addCase(loadViewScript.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.error.message || 'Failed to load view script';
+                state.error =
+                    action.payload !== undefined && action.payload !== ''
+                        ? action.payload
+                        : action.error.message || 'Failed to load view script';
             });
     }
 });

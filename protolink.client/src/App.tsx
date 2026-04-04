@@ -77,6 +77,7 @@ if (!w.react) {
             getLanguageId: (langCode: string) => urlLanguageService.getLanguageId(langCode),
             pickLocalizedName: (values: unknown[], lang: string | undefined, fallback: string) =>
                 pickLocalizedName(values as any, lang, fallback, (langCode) => urlLanguageService.getLanguageId(langCode)),
+            loadLanguages: () => urlLanguageService.loadLanguages(),
         },
     };
     
