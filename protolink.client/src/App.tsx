@@ -5,6 +5,8 @@ import RootComponent from './RootComponent'
 import { persistor, store } from './store/store'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import * as material from '@mui/material'
+import FolderOutlined from '@mui/icons-material/FolderOutlined'
+import InsertDriveFileOutlined from '@mui/icons-material/InsertDriveFileOutlined'
 import { getEntities, getEntity } from './store/actions/thunkActions/entities'
 import { pickLocalizedName } from './constants/entityParents'
 import { urlLanguageService } from './services/urlLanguageService'
@@ -27,6 +29,10 @@ if (!w.react) {
     // Material-UI components
     w['@mui/material'] = material;
     w['mui'] = material; // Shorter alias
+    w['muiIcons'] = {
+        FolderOutlined,
+        InsertDriveFileOutlined,
+    }
     
     // Common Material-UI components for convenience
     w['Box'] = material.Box;

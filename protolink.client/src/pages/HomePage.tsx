@@ -11,6 +11,10 @@ import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../constants/home';
 
 const EMPTY_MAPPINGS: readonly EntityViewMapping[] = [];
 
+function normGuid(g: string): string {
+    return g.replace(/-/g, '').toLowerCase();
+}
+
 const HomePage: React.FC = () => {
     const { id: routeEntityId } = useParams<{ id?: string }>();
     const [searchParams] = useSearchParams();
@@ -26,19 +30,38 @@ const HomePage: React.FC = () => {
 
     // All hooks must be called before any conditional returns
     const entitiesState = useAppSelector((state) => state.entities as EntitiesStatePart);
+    const authentication = useAppSelector((state) => state.authentication);
     const loading = entitiesState.loading;
     const error = entitiesState.error;
     const mappings = entityId ? (entitiesState.entityViews?.[entityId] ?? EMPTY_MAPPINGS) : EMPTY_MAPPINGS;
-    
-    // Redirect logic: root path always resolves to the public/home entity.
-    // This must stay distinct from a user profile route (/:userId).
+    const isAuthenticated = Boolean(authentication?.accessToken);
+    const userHomeId = authentication?.userId?.trim();
+
+    // Redirect `/`: signed-in users → their home entity; anonymous → public ProtoLink home entity.
     useEffect(() => {
-        if (routeEntityId === undefined) {
-            navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}?lang=${encodeURIComponent(DEFAULT_HOME_LANG)}`, {
-                replace: true,
-            });
+        if (routeEntityId !== undefined) {
+            return;
         }
-    }, [routeEntityId, navigateWithParams]);
+        const langParam = searchParams.get('lang') ?? DEFAULT_HOME_LANG;
+        const q = `lang=${encodeURIComponent(langParam)}`;
+        if (isAuthenticated && userHomeId) {
+            navigateWithParams(`/${userHomeId}?${q}`, { replace: true });
+        } else {
+            navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}?${q}`, { replace: true });
+        }
+    }, [routeEntityId, navigateWithParams, searchParams, isAuthenticated, userHomeId]);
+
+    // Signed-in users opening the public home URL should land on their workspace, not the marketing home.
+    useEffect(() => {
+        if (!routeEntityId || !isAuthenticated || !userHomeId) {
+            return;
+        }
+        if (normGuid(routeEntityId) !== normGuid(DEFAULT_HOME_ENTITY_ID)) {
+            return;
+        }
+        const langParam = searchParams.get('lang') ?? DEFAULT_HOME_LANG;
+        navigateWithParams(`/${userHomeId}?lang=${encodeURIComponent(langParam)}`, { replace: true });
+    }, [routeEntityId, isAuthenticated, userHomeId, searchParams, navigateWithParams]);
 
     useEffect(() => {
         if (!entityId) {

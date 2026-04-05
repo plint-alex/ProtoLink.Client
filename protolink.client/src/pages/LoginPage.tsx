@@ -138,10 +138,14 @@ const LoginPage: React.FC = () => {
                 const authData = result.payload;
                 // Only redirect if we have an accessToken and no error
                 if (authData?.accessToken && !authData?.error) {
-                    // Remove unnecessary URL parameters (logout, returnurl) after successful login
-                    navigateWithParams(ROUTES.HOMEPAGE_ROUTE, {
+                    const uid = authData.userId?.trim();
+                    const dest =
+                        uid && uid.length > 0
+                            ? `/${uid}?lang=${encodeURIComponent(lang)}`
+                            : ROUTES.HOMEPAGE_ROUTE;
+                    navigateWithParams(dest, {
                         params: { logout: null, returnurl: null },
-                        replace: true
+                        replace: true,
                     });
                 } else if (authData?.error) {
                     // Show error from authData
