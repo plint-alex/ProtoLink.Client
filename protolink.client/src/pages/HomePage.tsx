@@ -11,10 +11,6 @@ import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../constants/home';
 
 const EMPTY_MAPPINGS: readonly EntityViewMapping[] = [];
 
-function normGuid(g: string): string {
-    return g.replace(/-/g, '').toLowerCase();
-}
-
 const HomePage: React.FC = () => {
     const { id: routeEntityId } = useParams<{ id?: string }>();
     const [searchParams] = useSearchParams();
@@ -51,17 +47,7 @@ const HomePage: React.FC = () => {
         }
     }, [routeEntityId, navigateWithParams, searchParams, isAuthenticated, userHomeId]);
 
-    // Signed-in users opening the public home URL should land on their workspace, not the marketing home.
-    useEffect(() => {
-        if (!routeEntityId || !isAuthenticated || !userHomeId) {
-            return;
-        }
-        if (normGuid(routeEntityId) !== normGuid(DEFAULT_HOME_ENTITY_ID)) {
-            return;
-        }
-        const langParam = searchParams.get('lang') ?? DEFAULT_HOME_LANG;
-        navigateWithParams(`/${userHomeId}?lang=${encodeURIComponent(langParam)}`, { replace: true });
-    }, [routeEntityId, isAuthenticated, userHomeId, searchParams, navigateWithParams]);
+    // When the URL already contains an entity id (e.g. public home id from the logo), never redirect away from it.
 
     useEffect(() => {
         if (!entityId) {

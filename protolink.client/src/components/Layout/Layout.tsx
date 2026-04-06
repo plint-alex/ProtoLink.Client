@@ -9,6 +9,7 @@ import { useAppDispatch, useAppSelector } from '../../store/store';
 import { logout } from '../../store/actions/thunkActions/authentication';
 import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
 import { textCatalogService } from '../../services/textCatalogService';
+import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../../constants/home';
 
 
 const RootDiv = styled('div')(() => ({
@@ -109,7 +110,13 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                     }}
                 >
                     <ButtonBase
-                        onClick={() => handleNavigation('/')}
+                        onClick={() => {
+                            const langParam =
+                                new URLSearchParams(location.search).get('lang') ?? DEFAULT_HOME_LANG;
+                            handleNavigation(
+                                `/${DEFAULT_HOME_ENTITY_ID}?lang=${encodeURIComponent(langParam)}`
+                            );
+                        }}
                         sx={{
                             display: 'flex',
                             alignItems: 'center',
