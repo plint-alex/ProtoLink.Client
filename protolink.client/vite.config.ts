@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -5,7 +6,14 @@ import react from '@vitejs/plugin-react';
 const API_TARGET = 'http://localhost:5000';
 const DEV_PORT = 3000;
 
+const pkg = JSON.parse(
+    readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf8')
+) as { version: string };
+
 export default defineConfig({
+    define: {
+        'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version ?? '0.0.0')
+    },
     plugins: [react()],
     resolve: {
         alias: {

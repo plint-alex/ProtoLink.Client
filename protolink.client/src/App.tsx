@@ -51,13 +51,25 @@ if (!w.react) {
     w['internal'] = {
         ...existingInternal,
         apiRequest: async (path: string, method: string, body?: unknown) => {
+            const token = store.getState().authentication?.accessToken;
+            const headers: Record<string, string> = {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            };
+            if (token) headers.Authorization = `Bearer ${token}`;
             const res = await fetch(`/api/${path}`.replace(/\/+/, '/'), {
                 method,
-                headers: { 'Content-Type': 'application/json' },
-                body: body ? JSON.stringify(body) : undefined,
+                headers,
+                body: body !== undefined && body !== null ? JSON.stringify(body) : undefined,
             });
             if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
-            return res.json();
+            const text = await res.text();
+            if (!text) return null;
+            try {
+                return JSON.parse(text);
+            } catch {
+                return text;
+            }
         },
         store: {
             getState: () => store.getState(),
@@ -83,7 +95,22 @@ if (!w.react) {
             getLanguageId: (langCode: string) => urlLanguageService.getLanguageId(langCode),
             pickLocalizedName: (values: unknown[], lang: string | undefined, fallback: string) =>
                 pickLocalizedName(values as any, lang, fallback, (langCode) => urlLanguageService.getLanguageId(langCode)),
+            /** Always prefer awaiting this before pickLocalizedName so language parent GUIDs resolve. */
             loadLanguages: () => urlLanguageService.loadLanguages(),
+            /** Convenience: load language entities then pick (use from dynamic views). */
+            pickLocalizedNameAsync: async (
+                values: unknown[],
+                lang: string | undefined,
+                fallback: string
+            ) => {
+                await urlLanguageService.loadLanguages();
+                return pickLocalizedName(
+                    values as any,
+                    lang,
+                    fallback,
+                    (langCode) => urlLanguageService.getLanguageId(langCode)
+                );
+            },
         },
     };
     

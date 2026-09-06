@@ -22,6 +22,26 @@ import * as yup from 'yup'
 import { urlLanguageService } from '../services/urlLanguageService'
 import { textCatalogService } from '../services/textCatalogService'
 
+const REGISTER_DEFAULTS_EN: Record<string, string> = {
+  'register-title': 'Create account',
+  'register-field-email': 'Email',
+  'register-field-password': 'Password',
+  'register-field-confirm-password': 'Confirm password',
+  'register-submit': 'Register',
+  'register-back-sign-in': 'Back to sign in',
+  'register-validation-email-invalid': 'Enter a valid email',
+  'register-validation-email-required': 'Email is required',
+  'register-validation-password-min': 'Password must be at least 5 characters',
+  'register-validation-password-required': 'Password is required',
+  'register-validation-password-match': 'Passwords must match',
+  'register-validation-confirm-password-required': 'Confirm password is required',
+  'register-email-send-failed-prefix': 'Could not send email:',
+  'register-error-try-later': 'Please try again later.',
+  'register-error-generic': 'Registration failed',
+  'register-error-invalid-fields': 'Fix the highlighted fields',
+  'register-error-network': 'Network error during registration',
+}
+
 const RegisterContainer = styled(Container)(({ theme }) => ({
   marginTop: theme.spacing(8),
   display: 'flex',
@@ -60,7 +80,10 @@ const RegisterPage: React.FC = () => {
   const dispatch = useAppDispatch()
   const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search])
   const [texts, setTexts] = React.useState<Record<string, string>>({})
-  const t = React.useCallback((code: string) => texts[code] || code, [texts])
+  const t = React.useCallback(
+    (code: string) => texts[code] || REGISTER_DEFAULTS_EN[code] || code,
+    [texts]
+  )
   const schema = React.useMemo(
     () =>
       yup.object().shape({

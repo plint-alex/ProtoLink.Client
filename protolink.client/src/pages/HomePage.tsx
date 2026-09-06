@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, CircularProgress, Stack } from '@mui/material';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { loadViewScript } from '../store/actions/thunkActions/entities';
@@ -8,6 +8,12 @@ import type { EntityViewMapping } from '../types/view';
 import ErrorBoundary from '../ErrorBoundary';
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams';
 import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../constants/home';
+import { textCatalogService } from '../services/textCatalogService';
+import { SYSTEM_PAGE_CODES } from '../resources/routes-constants';
+
+const HOME_DEFAULTS_EN: Record<string, string> = {
+    'home-view-unavailable': 'Dynamic view not available yet for this page.',
+};
 
 const EMPTY_MAPPINGS: readonly EntityViewMapping[] = [];
 
@@ -21,8 +27,32 @@ const HomePage: React.FC = () => {
         const value = searchParams.get('lang');
         return value ?? undefined;
     }, [searchParams]);
+    const catalogLang = lang || DEFAULT_HOME_LANG;
+    const [shellTexts, setShellTexts] = useState<Record<string, string>>({});
 
     const entityId = routeEntityId;
+
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            try {
+                const texts = await textCatalogService.loadPageTexts({
+                    lang: catalogLang,
+                    systemPageCode: SYSTEM_PAGE_CODES.LAYOUT,
+                });
+                if (!cancelled) {
+                    setShellTexts(texts);
+                }
+            } catch (error) {
+                console.error('[HomePage] failed to load shell texts', error);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [catalogLang]);
+
+    const t = (code: string) => shellTexts[code] || HOME_DEFAULTS_EN[code] || code;
 
     // All hooks must be called before any conditional returns
     const entitiesState = useAppSelector((state) => state.entities as EntitiesStatePart);
@@ -109,7 +139,8 @@ const HomePage: React.FC = () => {
 
             {!loading && !error && !DynamicComponent && (
                 <Alert severity="warning">
-                    Dynamic view not available yet for entity {entityId}.
+                    {t('home-view-unavailable')}
+                    {entityId ? ` (${entityId})` : ''}
                 </Alert>
             )}
         </Stack>

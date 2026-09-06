@@ -9,6 +9,7 @@ import { useAppDispatch, useAppSelector } from '../../store/store';
 import { logout } from '../../store/actions/thunkActions/authentication';
 import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
 import { textCatalogService } from '../../services/textCatalogService';
+import { resolveUserAvatarUrl } from '../../services/userAvatarService';
 import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../../constants/home';
 
 
@@ -44,7 +45,24 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
     const isAuthenticated = Boolean(authentication?.accessToken);
     const userHomePath = authentication?.userId ? `/${authentication.userId}` : null;
     const [layoutTexts, setLayoutTexts] = useState<Record<string, string>>({});
+    const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
     const lang = useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
+
+    useEffect(() => {
+        let cancelled = false;
+        const userId = authentication?.userId;
+        if (!isAuthenticated || !userId) {
+            setAvatarSrc(null);
+            return;
+        }
+        ;(async () => {
+            const url = await resolveUserAvatarUrl(String(userId), 128);
+            if (!cancelled) setAvatarSrc(url);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthenticated, authentication?.userId, location.pathname]);
 
     const handleNavigation = (path: string) => {
         navigateWithParams(path);
@@ -84,7 +102,17 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
         };
     }, [lang, location.pathname]);
 
-    const t = (code: string) => layoutTexts[code] || code;
+    const layoutDefaults: Record<string, string> = {
+        'layout-brand': 'ProtoLink',
+        'layout-home': 'Home',
+        'layout-explorer': 'Explorer',
+        'layout-login': 'Log in',
+        'layout-logout': 'Log out',
+        'layout-user-default': 'User',
+        'layout-logo-alt': 'ProtoLink Logo',
+        'layout-version-title': 'Client package version',
+    };
+    const t = (code: string) => layoutTexts[code] || layoutDefaults[code] || code;
 
     return (
         <RootDiv>
@@ -128,7 +156,7 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                     >
                         <Logo
                             src="/icon.png"
-                            alt="ProtoLink Logo"
+                            alt={t('layout-logo-alt')}
                             onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                             }}
@@ -208,11 +236,20 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                         )}
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
+                        <Typography
+                            variant="caption"
+                            component="span"
+                            sx={{ color: '#5f6368', fontSize: '11px', userSelect: 'none', mr: 0.5 }}
+                            title={t('layout-version-title')}
+                        >
+                            v{import.meta.env.VITE_APP_VERSION}
+                        </Typography>
                         <UrlLanguageSelector />
                         {isAuthenticated ? (
                             <UserMenu
                                 userName={authentication?.userName}
                                 login={authentication?.login}
+                                avatarSrc={avatarSrc}
                                 onLogout={handleLogout}
                                 text={{
                                     login: t('layout-login'),

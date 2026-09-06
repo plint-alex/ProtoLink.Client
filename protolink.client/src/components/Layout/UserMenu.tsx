@@ -5,6 +5,7 @@ import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
 interface UserMenuProps {
     userName?: string;
     login?: string;
+    avatarSrc?: string | null;
     onLogout: () => void;
     text: {
         login: string;
@@ -48,7 +49,7 @@ const getAvatarColor = (text: string): string => {
     return colors[Math.abs(hash) % colors.length];
 };
 
-export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout, text }) => {
+export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, avatarSrc, onLogout, text }) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const avatarRef = useRef<HTMLDivElement>(null);
     const navigateWithParams = useNavigationWithParams();
@@ -64,7 +65,6 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout, t
 
     const handleLogin = () => {
         handleClose();
-        // Clean URL parameters when navigating to login
         navigateWithParams('/login', {
             params: { logout: null, returnurl: null },
             replace: true
@@ -80,6 +80,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout, t
     const avatarColor = getAvatarColor(userName || login || text.userDefault || 'x');
     const displayName = userName || text.userDefault;
     const displayEmail = login || '';
+    const src = avatarSrc || undefined;
 
     return (
         <>
@@ -98,6 +99,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout, t
                 }}
             >
                 <Avatar
+                    src={src}
                     sx={{
                         width: 32,
                         height: 32,
@@ -146,6 +148,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout, t
                     <>
                         <Box sx={{ px: 2, py: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <Avatar
+                                src={src}
                                 sx={{
                                     width: 64,
                                     height: 64,
@@ -195,4 +198,3 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, onLogout, t
         </>
     );
 };
-

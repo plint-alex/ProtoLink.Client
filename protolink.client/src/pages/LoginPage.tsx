@@ -21,6 +21,21 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { textCatalogService } from '../services/textCatalogService';
 
+const LOGIN_DEFAULTS_EN: Record<string, string> = {
+    'login-title': 'Sign in',
+    'login-field-login': 'Login',
+    'login-field-password': 'Password',
+    'login-submit': 'Sign in',
+    'login-register': 'Create account',
+    'login-back-home': 'Back to home',
+    'login-validation-login-required': 'Login is required',
+    'login-validation-password-required': 'Password is required',
+    'login-error-generic': 'Sign-in failed',
+    'login-error-failed': 'Sign-in failed',
+    'login-error-check-credentials': 'Check your login and password',
+    'login-error-network': 'Network error during sign-in',
+};
+
 const LoginContainer = styled(Container)(({ theme }) => ({
     marginTop: theme.spacing(8),
     display: 'flex',
@@ -59,7 +74,10 @@ const LoginPage: React.FC = () => {
     const authData = useAppSelector((state) => state.authentication);
     const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
     const [texts, setTexts] = React.useState<Record<string, string>>({});
-    const t = React.useCallback((code: string) => texts[code] || code, [texts]);
+    const t = React.useCallback(
+        (code: string) => texts[code] || LOGIN_DEFAULTS_EN[code] || code,
+        [texts]
+    );
 
     const schema = React.useMemo(
         () =>

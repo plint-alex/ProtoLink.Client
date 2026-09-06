@@ -1,5 +1,5 @@
 import axios from '../utility/customAxios'
-import { NAME_PARENT_ID, pickLocalizedName, type EntityValueLike } from '../constants/entityParents'
+import { pickLocalizedName, type EntityValueLike } from '../constants/entityParents'
 import { urlLanguageService } from './urlLanguageService'
 import { ROUTES, SYSTEM_PAGE_CODES, SYSTEM_PAGE_ID_BY_CODE } from '../resources/routes-constants'
 
@@ -16,12 +16,6 @@ type LoadPageTextsParams = {
     pathname?: string
 }
 
-type LanguageEntity = {
-    id: string
-    code: string
-}
-
-const LANGUAGE_ROOT_ID = '00010002-0000-0000-0000-000000000000'
 const TOP_MENU_TEXT_CODES = [
     'layout-brand',
     'layout-home',
@@ -29,12 +23,34 @@ const TOP_MENU_TEXT_CODES = [
     'layout-login',
     'layout-logout',
     'layout-user-default',
+    'layout-logo-alt',
+    'layout-version-title',
+    'notfound-title',
+    'notfound-back-home',
+    'home-view-unavailable',
 ] as const
+
+/** Shown when catalog entities exist but values are missing or language parents could not be resolved. */
+const TOP_MENU_DEFAULTS_EN: Record<(typeof TOP_MENU_TEXT_CODES)[number], string> = {
+    'layout-brand': 'ProtoLink',
+    'layout-home': 'Home',
+    'layout-explorer': 'Explorer',
+    'layout-login': 'Log in',
+    'layout-logout': 'Log out',
+    'layout-user-default': 'User',
+    'layout-logo-alt': 'ProtoLink Logo',
+    'layout-version-title': 'Client package version',
+    'notfound-title': 'Oops 404!',
+    'notfound-back-home': 'Homepage',
+    'home-view-unavailable': 'Dynamic view not available yet for this page.',
+}
 
 class TextCatalogService {
     private systemPageEntityIdByCode: Record<string, string> = {}
     private inFlightSystemPageByCode: Record<string, Promise<string | null> | undefined> = {}
     private inFlightByLang: Record<string, Promise<Record<string, string>> | undefined> = {}
+    /** Dedupes concurrent GetEntities(children of parent) calls (e.g. Layout top menu + page texts on same entity). */
+    private inFlightChildrenByParentId: Map<string, Promise<TextEntity[]>> = new Map()
 
     private inferSystemPageCodeFromPath(pathname: string): string | null {
         if (pathname === ROUTES.HOMEPAGE_ROUTE) return SYSTEM_PAGE_CODES.HOME_ROOT
@@ -86,6 +102,38 @@ class TextCatalogService {
         return this.loadSystemPageEntityId(inferredCode)
     }
 
+    /**
+     * Shared fetch for text entities under a single parent. Merges parallel callers (same parentId)
+     * into one HTTP request — e.g. loadTopMenuTexts + loadPageTexts on /explorer/:id.
+     */
+    private async fetchTextChildrenUnderParent(parentId: string): Promise<TextEntity[]> {
+        const existing = this.inFlightChildrenByParentId.get(parentId)
+        if (existing) {
+            return existing
+        }
+
+        const promise = (async () => {
+            const response = await axios.post<TextEntity[]>(
+                '/api/entities/getEntities',
+                {
+                    parentIds: [parentId],
+                    skip: 0,
+                    take: 300,
+                    includeValues: true,
+                },
+                { headers: { 'X-ProtoLink-Text-Request': '1' } }
+            )
+            return response.data ?? []
+        })()
+
+        this.inFlightChildrenByParentId.set(parentId, promise)
+        try {
+            return await promise
+        } finally {
+            this.inFlightChildrenByParentId.delete(parentId)
+        }
+    }
+
     async loadPageTexts(params: LoadPageTextsParams): Promise<Record<string, string>> {
         const pageEntityId = await this.resolvePageEntityId(params)
         if (!pageEntityId) {
@@ -100,14 +148,7 @@ class TextCatalogService {
         this.inFlightByLang[inFlightKey] = (async () => {
             await urlLanguageService.loadLanguages()
 
-            const textsResponse = await axios.post<TextEntity[]>('/api/entities/getEntities', {
-                parentIds: [pageEntityId],
-                skip: 0,
-                take: 300,
-                includeValues: true,
-            })
-
-            const texts = textsResponse.data ?? []
+            const texts = await this.fetchTextChildrenUnderParent(pageEntityId)
             const map: Record<string, string> = {}
             for (const textEntity of texts) {
                 map[textEntity.code] = pickLocalizedName(
@@ -157,58 +198,49 @@ class TextCatalogService {
         return SYSTEM_PAGE_ID_BY_CODE[systemPageCode] ?? null
     }
 
-    private async getLanguageByCode(langCode: string): Promise<LanguageEntity | null> {
-        const response = await axios.post<LanguageEntity[]>(
-            '/api/entities/getEntities',
-            {
-                parentIds: [LANGUAGE_ROOT_ID],
-                skip: 0,
-                take: 100,
-                includeValues: false,
-            },
-            { headers: { 'X-ProtoLink-Text-Request': '1' } }
-        )
-
-        const languages = response.data ?? []
-        return languages.find((l) => l.code === langCode) ?? null
+    /** Coerce getEntities value rows (camelCase / PascalCase, parents as guid strings). */
+    private coerceEntityValues(values: unknown): EntityValueLike[] {
+        if (!Array.isArray(values)) {
+            return []
+        }
+        return values.map((v: Record<string, unknown>) => {
+            const rawParents = v.parents ?? v.Parents
+            const parents = Array.isArray(rawParents)
+                ? rawParents.map((p) => {
+                      if (typeof p === 'string') {
+                          return p
+                      }
+                      if (p && typeof p === 'object') {
+                          const o = p as Record<string, unknown>
+                          const id = o.entityParentId ?? o.EntityParentId
+                          return id != null ? String(id) : ''
+                      }
+                      return String(p ?? '')
+                  })
+                : []
+            return {
+                value: v.value ?? v.Value,
+                parents: parents.filter(Boolean),
+            }
+        })
     }
 
+    /**
+     * Resolves toolbar labels the same way as page texts: {@link pickLocalizedName}
+     * (requested lang → en-US → explicit fallback; no cross-language nameOnly when lang is set).
+     * The previous custom matcher required a language parent id; when {@link urlLanguageService.getLanguageId}
+     * was empty nothing matched, so the UI showed raw codes like layout-home.
+     */
     private async loadTopMenuValuesByParentId(
         parentEntityId: string,
-        lang: string,
-        languageEntity: LanguageEntity | null
+        lang: string
     ): Promise<Record<string, string>> {
-        const textEntitiesResponse = await axios.post<TextEntity[]>(
-            '/api/entities/getEntities',
-            {
-                parentIds: [parentEntityId],
-                skip: 0,
-                take: 300,
-                includeValues: false,
-            },
-            { headers: { 'X-ProtoLink-Text-Request': '1' } }
-        )
-        const textEntities = (textEntitiesResponse.data ?? []).filter((entity) =>
+        await urlLanguageService.loadLanguages()
+        const allUnderParent = await this.fetchTextChildrenUnderParent(parentEntityId)
+        const entitiesWithValues = allUnderParent.filter((entity) =>
             TOP_MENU_TEXT_CODES.includes(entity.code as (typeof TOP_MENU_TEXT_CODES)[number])
         )
 
-        const textIds = textEntities.map((entity) => entity.id)
-        if (!textIds.length) {
-            return {}
-        }
-
-        const valuesResponse = await axios.post<TextEntity[]>(
-            '/api/entities/getEntities',
-            {
-                ids: textIds,
-                skip: 0,
-                take: textIds.length,
-                includeValues: true,
-            },
-            { headers: { 'X-ProtoLink-Text-Request': '1' } }
-        )
-
-        const entitiesWithValues = valuesResponse.data ?? []
         const byCode = new Map<string, TextEntity>()
         for (const entity of entitiesWithValues) {
             byCode.set(entity.code, entity)
@@ -221,19 +253,15 @@ class TextCatalogService {
                 continue
             }
 
-            const values = textEntity.values ?? []
-            const localizedValue = values.find((v) => {
-                const parents = v.parents ?? []
-                const hasNameParent = parents.includes(NAME_PARENT_ID)
-                const hasLanguageParent =
-                    (languageEntity?.id && parents.includes(languageEntity.id)) ||
-                    (languageEntity?.code && parents.includes(languageEntity.code)) ||
-                    parents.includes(lang)
-                return hasNameParent && hasLanguageParent
-            })
-
-            if (typeof localizedValue?.value === 'string' && localizedValue.value.trim()) {
-                result[code] = localizedValue.value.trim()
+            const values = this.coerceEntityValues(textEntity.values)
+            const label = pickLocalizedName(
+                values,
+                lang,
+                TOP_MENU_DEFAULTS_EN[code],
+                (langCode) => urlLanguageService.getLanguageId(langCode)
+            )
+            if (label && label !== '...') {
+                result[code] = label
             }
         }
 
@@ -250,20 +278,19 @@ class TextCatalogService {
             return {}
         }
 
-        const languageEntity = await this.getLanguageByCode(lang)
-        const primaryValues = await this.loadTopMenuValuesByParentId(
-            primaryParentEntityId,
-            lang,
-            languageEntity
-        )
+        const primaryValues = await this.loadTopMenuValuesByParentId(primaryParentEntityId, lang)
         const layoutFallbackValues =
             layoutParentEntityId && layoutParentEntityId !== primaryParentEntityId
-                ? await this.loadTopMenuValuesByParentId(layoutParentEntityId, lang, languageEntity)
+                ? await this.loadTopMenuValuesByParentId(layoutParentEntityId, lang)
                 : {}
 
         const result: Record<string, string> = {}
         for (const code of TOP_MENU_TEXT_CODES) {
-            result[code] = primaryValues[code] || layoutFallbackValues[code] || code
+            result[code] =
+                primaryValues[code] ||
+                layoutFallbackValues[code] ||
+                TOP_MENU_DEFAULTS_EN[code] ||
+                code
         }
         return result
     }
