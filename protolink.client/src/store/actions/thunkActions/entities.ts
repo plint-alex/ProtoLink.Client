@@ -400,10 +400,22 @@ type LoadViewScriptResult = {
 
 type ViewDataResponse = ViewData & { originalScripts?: string };
 
+/** Machine-readable `code` from the entity read error contract (`not_found` / `no_access`) or GetView `VIEW_*`. */
+export type ViewLoadError = {
+    code?: string
+    detail: string
+}
+
+function toViewLoadError(error: unknown): ViewLoadError {
+    const body = isAxiosError(error) ? (error.response?.data as GetViewErrorBody | undefined) : undefined
+    const code = typeof body?.code === 'string' && body.code.trim() !== '' ? body.code : undefined
+    return { code, detail: formatGetViewUserMessage(error) }
+}
+
 export const loadViewScript = createAsyncThunk<
     LoadViewScriptResult,
     LoadViewScriptParams,
-    { rejectValue: string }
+    { rejectValue: ViewLoadError }
 >(
     'entities/loadViewScript',
     async ({ entityId, lang }, { rejectWithValue }) => {
@@ -481,7 +493,7 @@ export const loadViewScript = createAsyncThunk<
             };
         } catch (e) {
             console.error('[loadViewScript] failed to load view', e);
-            return rejectWithValue(formatGetViewUserMessage(e));
+            return rejectWithValue(toViewLoadError(e));
         }
     }
 );

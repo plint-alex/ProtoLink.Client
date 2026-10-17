@@ -1,25 +1,34 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, CircularProgress, Stack } from '@mui/material';
-import { useParams, useSearchParams } from 'react-router-dom';
-import { loadViewScript } from '../store/actions/thunkActions/entities';
+import { CircularProgress, Skeleton, Stack } from '@mui/material';
+import ErrorOutline from '@mui/icons-material/ErrorOutline';
+import LockOutlined from '@mui/icons-material/LockOutlined';
+import SearchOff from '@mui/icons-material/SearchOff';
+import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { loadViewScript, type ViewLoadError } from '../store/actions/thunkActions/entities';
 import { useAppDispatch, useAppSelector } from '../store/store';
 import type { EntitiesStatePart } from '../store/entitiesSlice';
 import type { EntityViewMapping } from '../types/view';
 import ErrorBoundary from '../ErrorBoundary';
+import EntityState from '../components/EntityState';
+import { useDelayedFlag } from '../hooks/useDelayedFlag';
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams';
 import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../constants/home';
-import { textCatalogService } from '../services/textCatalogService';
-import { SYSTEM_PAGE_CODES } from '../resources/routes-constants';
-
-const HOME_DEFAULTS_EN: Record<string, string> = {
-    'home-view-unavailable': 'Dynamic view not available yet for this page.',
-};
+import { TOP_MENU_DEFAULTS_EN, textCatalogService } from '../services/textCatalogService';
+import { ROUTES, SYSTEM_PAGE_CODES } from '../resources/routes-constants';
 
 const EMPTY_MAPPINGS: readonly EntityViewMapping[] = [];
+const LOADING_SKELETON_DELAY_MS = 300;
+
+type ViewLoad = {
+    entityId: string;
+    error?: ViewLoadError;
+    done: boolean;
+};
 
 const HomePage: React.FC = () => {
     const { id: routeEntityId } = useParams<{ id?: string }>();
     const [searchParams] = useSearchParams();
+    const location = useLocation();
     const dispatch = useAppDispatch();
     const navigateWithParams = useNavigationWithParams();
 
@@ -29,6 +38,7 @@ const HomePage: React.FC = () => {
     }, [searchParams]);
     const catalogLang = lang || DEFAULT_HOME_LANG;
     const [shellTexts, setShellTexts] = useState<Record<string, string>>({});
+    const [viewLoad, setViewLoad] = useState<ViewLoad | null>(null);
 
     const entityId = routeEntityId;
 
@@ -52,13 +62,11 @@ const HomePage: React.FC = () => {
         };
     }, [catalogLang]);
 
-    const t = (code: string) => shellTexts[code] || HOME_DEFAULTS_EN[code] || code;
+    const t = (code: keyof typeof TOP_MENU_DEFAULTS_EN) => shellTexts[code] || TOP_MENU_DEFAULTS_EN[code];
 
     // All hooks must be called before any conditional returns
     const entitiesState = useAppSelector((state) => state.entities as EntitiesStatePart);
     const authentication = useAppSelector((state) => state.authentication);
-    const loading = entitiesState.loading;
-    const error = entitiesState.error;
     const mappings = entityId ? (entitiesState.entityViews?.[entityId] ?? EMPTY_MAPPINGS) : EMPTY_MAPPINGS;
     const isAuthenticated = Boolean(authentication?.accessToken);
     const userHomeId = authentication?.userId?.trim();
@@ -86,7 +94,20 @@ const HomePage: React.FC = () => {
 
         // Reload on entity/lang change so stale empty mappings can recover
         // after backend/view updates without forcing a hard page refresh.
-        void dispatch(loadViewScript({ entityId, lang }));
+        let cancelled = false;
+        setViewLoad({ entityId, done: false });
+        void dispatch(loadViewScript({ entityId, lang })).then((action) => {
+            if (cancelled) {
+                return;
+            }
+            const error = loadViewScript.rejected.match(action)
+                ? (action.payload ?? { detail: action.error.message ?? '' })
+                : undefined;
+            setViewLoad({ entityId, error, done: true });
+        });
+        return () => {
+            cancelled = true;
+        };
     }, [entityId, lang, dispatch]);
 
     const viewId = useMemo(() => {
@@ -106,8 +127,13 @@ const HomePage: React.FC = () => {
         }
 
         const candidate = (window as unknown as Record<string, unknown>)[viewId];
-        return typeof candidate === 'function' ? (candidate as React.ComponentType<any>) : null;
+        return typeof candidate === 'function' ? (candidate as React.ComponentType<{ entityId?: string; lang?: string }>) : null;
     }, [viewId]);
+
+    const currentLoad = viewLoad?.entityId === entityId ? viewLoad : null;
+    const loadError = currentLoad?.error;
+    const viewLoading = !currentLoad?.done;
+    const showSkeleton = useDelayedFlag(viewLoading && !DynamicComponent, LOADING_SKELETON_DELAY_MS);
 
     // If no entity ID in URL, show loading while redirect happens
     // This check must come AFTER all hooks are called
@@ -119,29 +145,58 @@ const HomePage: React.FC = () => {
         );
     }
 
+    const goHome = { label: t('home-go-home'), to: ROUTES.HOMEPAGE_ROUTE };
+    const signIn = {
+        label: t('home-sign-in'),
+        to: `${ROUTES.LOGIN_ROUTE}?returnurl=${encodeURIComponent(`${location.pathname}${location.search}`)}`,
+    };
+
+    const renderLoadError = (error: ViewLoadError) => {
+        const common = { detailsLabel: t('home-details'), details: error.detail };
+        if (error.code === 'not_found') {
+            return <EntityState icon={<SearchOff />} title={t('home-not-found')} action={goHome} {...common} />;
+        }
+        if (error.code === 'no_access') {
+            return (
+                <EntityState
+                    icon={<LockOutlined />}
+                    title={t('home-no-access')}
+                    subtitle={isAuthenticated ? undefined : t('home-no-access-signed-out')}
+                    action={isAuthenticated ? goHome : signIn}
+                    {...common}
+                />
+            );
+        }
+        return <EntityState icon={<ErrorOutline />} title={t('home-load-failed')} action={goHome} {...common} />;
+    };
+
     return (
         <Stack spacing={2} sx={{ p: 3 }}>
-            {loading && (
-                <CircularProgress sx={{ alignSelf: 'center' }} />
-            )}
+            {loadError && renderLoadError(loadError)}
 
-            {error && (
-                <Alert severity="error" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {error}
-                </Alert>
-            )}
-
-            {DynamicComponent && (
+            {!loadError && DynamicComponent && (
                 <ErrorBoundary>
                     <DynamicComponent entityId={entityId} lang={lang} />
                 </ErrorBoundary>
             )}
 
-            {!loading && !error && !DynamicComponent && (
-                <Alert severity="warning">
-                    {t('home-view-unavailable')}
-                    {entityId ? ` (${entityId})` : ''}
-                </Alert>
+            {!loadError && !DynamicComponent && showSkeleton && (
+                <Stack spacing={1.5} aria-busy="true">
+                    <Skeleton variant="text" width="40%" height={40} />
+                    <Skeleton variant="rounded" height={56} />
+                    <Skeleton variant="rounded" height={56} />
+                    <Skeleton variant="rounded" height={56} />
+                </Stack>
+            )}
+
+            {!loadError && !DynamicComponent && !viewLoading && (
+                <EntityState
+                    icon={<ErrorOutline />}
+                    title={t('home-view-unavailable')}
+                    action={goHome}
+                    detailsLabel={t('home-details')}
+                    details={entityId}
+                />
             )}
         </Stack>
     );

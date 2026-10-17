@@ -28,10 +28,17 @@ const TOP_MENU_TEXT_CODES = [
     'notfound-title',
     'notfound-back-home',
     'home-view-unavailable',
+    'home-not-found',
+    'home-no-access',
+    'home-no-access-signed-out',
+    'home-load-failed',
+    'home-go-home',
+    'home-sign-in',
+    'home-details',
 ] as const
 
 /** Shown when catalog entities exist but values are missing or language parents could not be resolved. */
-const TOP_MENU_DEFAULTS_EN: Record<(typeof TOP_MENU_TEXT_CODES)[number], string> = {
+export const TOP_MENU_DEFAULTS_EN: Record<(typeof TOP_MENU_TEXT_CODES)[number], string> = {
     'layout-brand': 'ProtoLink',
     'layout-home': 'Home',
     'layout-explorer': 'Explorer',
@@ -43,6 +50,13 @@ const TOP_MENU_DEFAULTS_EN: Record<(typeof TOP_MENU_TEXT_CODES)[number], string>
     'notfound-title': 'Oops 404!',
     'notfound-back-home': 'Homepage',
     'home-view-unavailable': 'Dynamic view not available yet for this page.',
+    'home-not-found': 'This item was deleted or never existed',
+    'home-no-access': "You don't have access to this item",
+    'home-no-access-signed-out': 'Sign in to open this item',
+    'home-load-failed': "This page can't be shown right now",
+    'home-go-home': 'Go to home',
+    'home-sign-in': 'Sign in',
+    'home-details': 'Details',
 }
 
 class TextCatalogService {

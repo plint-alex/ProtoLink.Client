@@ -157,10 +157,13 @@ const LoginPage: React.FC = () => {
                 // Only redirect if we have an accessToken and no error
                 if (authData?.accessToken && !authData?.error) {
                     const uid = authData.userId?.trim();
-                    const dest =
-                        uid && uid.length > 0
-                            ? `/${uid}?lang=${encodeURIComponent(lang)}`
-                            : ROUTES.HOMEPAGE_ROUTE;
+                    const returnUrl = new URLSearchParams(location.search).get('returnurl');
+                    const isSameOriginPath = !!returnUrl && returnUrl.startsWith('/') && !/^\/[/\\]/.test(returnUrl);
+                    const dest = isSameOriginPath
+                        ? returnUrl
+                        : uid && uid.length > 0
+                          ? `/${uid}?lang=${encodeURIComponent(lang)}`
+                          : ROUTES.HOMEPAGE_ROUTE;
                     navigateWithParams(dest, {
                         params: { logout: null, returnurl: null },
                         replace: true,
