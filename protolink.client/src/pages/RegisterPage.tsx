@@ -21,6 +21,7 @@ import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { urlLanguageService } from '../services/urlLanguageService'
 import { textCatalogService } from '../services/textCatalogService'
+import { formatRegisterCheckEmailBody } from './registerCheckEmail'
 
 const REGISTER_DEFAULTS_EN: Record<string, string> = {
   'register-title': 'Create account',
@@ -40,6 +41,44 @@ const REGISTER_DEFAULTS_EN: Record<string, string> = {
   'register-error-generic': 'Registration failed',
   'register-error-invalid-fields': 'Fix the highlighted fields',
   'register-error-network': 'Network error during registration',
+  'register-check-email-title': 'Check your email',
+  'register-check-email-body':
+    'We sent a confirmation link to {email}. Open it to finish signing up.',
+  'register-check-email-body-no-address':
+    'We sent a confirmation link to your email. Open it to finish signing up.',
+  'register-check-email-spam': "If you don't see it, check Spam or Promotions.",
+  'register-check-email-back': 'Back to sign in',
+}
+
+const REGISTER_DEFAULTS_RU: Record<string, string> = {
+  'register-title': 'Создать аккаунт',
+  'register-field-email': 'Email',
+  'register-field-password': 'Пароль',
+  'register-field-confirm-password': 'Подтвердите пароль',
+  'register-submit': 'Зарегистрироваться',
+  'register-back-sign-in': 'Ко входу',
+  'register-validation-email-invalid': 'Введите корректный email',
+  'register-validation-email-required': 'Email обязателен',
+  'register-validation-password-min': 'Пароль должен быть не короче 5 символов',
+  'register-validation-password-required': 'Пароль обязателен',
+  'register-validation-password-match': 'Пароли должны совпадать',
+  'register-validation-confirm-password-required': 'Подтверждение пароля обязательно',
+  'register-email-send-failed-prefix': 'Не удалось отправить письмо:',
+  'register-error-try-later': 'Попробуйте позже.',
+  'register-error-generic': 'Регистрация не удалась',
+  'register-error-invalid-fields': 'Исправьте выделенные поля',
+  'register-error-network': 'Сетевая ошибка при регистрации',
+  'register-check-email-title': 'Проверьте почту',
+  'register-check-email-body':
+    'Мы отправили ссылку для подтверждения на {email}. Откройте её, чтобы завершить регистрацию.',
+  'register-check-email-body-no-address':
+    'Мы отправили ссылку для подтверждения на вашу почту. Откройте её, чтобы завершить регистрацию.',
+  'register-check-email-spam': 'Если письма нет — загляните в «Спам» или «Промоакции».',
+  'register-check-email-back': 'Ко входу',
+}
+
+function registerDefaultsForLang(lang: string): Record<string, string> {
+  return lang.toLowerCase().startsWith('ru') ? REGISTER_DEFAULTS_RU : REGISTER_DEFAULTS_EN
 }
 
 const RegisterContainer = styled(Container)(({ theme }) => ({
@@ -80,9 +119,11 @@ const RegisterPage: React.FC = () => {
   const dispatch = useAppDispatch()
   const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search])
   const [texts, setTexts] = React.useState<Record<string, string>>({})
+  const [checkEmailAddress, setCheckEmailAddress] = React.useState<string | null>(null)
+  const defaults = React.useMemo(() => registerDefaultsForLang(lang), [lang])
   const t = React.useCallback(
-    (code: string) => texts[code] || REGISTER_DEFAULTS_EN[code] || code,
-    [texts]
+    (code: string) => texts[code] || defaults[code] || code,
+    [texts, defaults]
   )
   const schema = React.useMemo(
     () =>
@@ -131,6 +172,13 @@ const RegisterPage: React.FC = () => {
     }
   }, [lang, location.pathname])
 
+  const goToLogin = () => {
+    navigateWithParams(ROUTES.LOGIN_ROUTE, {
+      params: { logout: null, returnurl: null },
+      replace: true,
+    })
+  }
+
   const onSubmit = async (data: RegisterFormData) => {
     try {
       const result = await dispatch(
@@ -161,26 +209,25 @@ const RegisterPage: React.FC = () => {
         return
       }
 
-      // Success - redirect to login and clean URL parameters
+      // Success — stay on register with check-email panel (do not silent-redirect)
       if (result.success) {
-        navigateWithParams(ROUTES.LOGIN_ROUTE, {
-          params: { logout: null, returnurl: null },
-          replace: true
-        })
+        setCheckEmailAddress(data.email.trim())
       }
-    } catch (err: any) {
-      // Handle rejected promise from thunk
-      if (err?.payload) {
-        const errorData = err.payload as { error?: string; emailError?: string }
-        if (errorData.emailError) {
+    } catch (err: unknown) {
+      const payload =
+        err && typeof err === 'object' && 'payload' in err
+          ? (err as { payload?: { error?: string; emailError?: string } }).payload
+          : undefined
+      if (payload) {
+        if (payload.emailError) {
           setError('root', {
             type: 'manual',
-            message: `${t('register-email-send-failed-prefix')} ${errorData.emailError}. ${t('register-error-try-later')}`,
+            message: `${t('register-email-send-failed-prefix')} ${payload.emailError}. ${t('register-error-try-later')}`,
           })
         } else {
           setError('root', {
             type: 'manual',
-            message: errorData.error || t('register-error-generic'),
+            message: payload.error || t('register-error-generic'),
           })
         }
       } else if (err && typeof err === 'object' && 'response' in err) {
@@ -211,6 +258,37 @@ const RegisterPage: React.FC = () => {
         })
       }
     }
+  }
+
+  if (checkEmailAddress !== null) {
+    const body = formatRegisterCheckEmailBody(t('register-check-email-body'), checkEmailAddress)
+
+    return (
+      <RegisterContainer maxWidth="xs">
+        <RegisterPaper elevation={3}>
+          <Typography component="h1" variant="h5">
+            {t('register-check-email-title')}
+          </Typography>
+          <Alert severity="success" sx={{ mt: 2, width: '100%' }}>
+            <Typography variant="body1" component="p" sx={{ mb: 1 }}>
+              {body}
+            </Typography>
+            <Typography variant="body2" component="p">
+              {t('register-check-email-spam')}
+            </Typography>
+          </Alert>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            sx={{ mt: 3 }}
+            onClick={goToLogin}
+          >
+            {t('register-check-email-back')}
+          </Button>
+        </RegisterPaper>
+      </RegisterContainer>
+    )
   }
 
   return (
@@ -278,10 +356,7 @@ const RegisterPage: React.FC = () => {
             <Button
               variant="text"
               color="primary"
-              onClick={() => navigateWithParams(ROUTES.LOGIN_ROUTE, {
-                params: { logout: null, returnurl: null },
-                replace: true
-              })}
+              onClick={goToLogin}
               disabled={isSubmitting}
             >
               {t('register-back-sign-in')}
@@ -294,4 +369,3 @@ const RegisterPage: React.FC = () => {
 }
 
 export default RegisterPage
-
