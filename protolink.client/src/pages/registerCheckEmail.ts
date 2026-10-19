@@ -3,5 +3,5 @@ export function formatRegisterCheckEmailBody(template: string, email: string | u
   if (!trimmed) {
     return template
   }
-  return template.replaceAll('{email}', trimmed)
+  return template.split('{email}').join(trimmed)
 }
