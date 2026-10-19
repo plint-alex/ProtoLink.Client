@@ -1,16 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { Box, Typography, Menu, MenuItem, Avatar, Divider } from '@mui/material';
 import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
+import { copyText } from '../../services/copyText';
 
 interface UserMenuProps {
     userName?: string;
     login?: string;
+    userId?: string;
     avatarSrc?: string | null;
     onLogout: () => void;
     text: {
         login: string;
         logout: string;
         userDefault: string;
+        copyMyId: string;
+        copyMyIdHint: string;
+        copied: string;
     };
 }
 
@@ -49,8 +54,16 @@ const getAvatarColor = (text: string): string => {
     return colors[Math.abs(hash) % colors.length];
 };
 
-export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, avatarSrc, onLogout, text }) => {
+export const UserMenu: React.FC<UserMenuProps> = ({
+    userName,
+    login,
+    userId,
+    avatarSrc,
+    onLogout,
+    text,
+}) => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [copied, setCopied] = useState(false);
     const avatarRef = useRef<HTMLDivElement>(null);
     const navigateWithParams = useNavigationWithParams();
     const open = Boolean(anchorEl);
@@ -61,6 +74,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, avatarSrc, 
 
     const handleClose = () => {
         setAnchorEl(null);
+        setCopied(false);
     };
 
     const handleLogin = () => {
@@ -74,6 +88,21 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, avatarSrc, 
     const handleLogout = () => {
         handleClose();
         onLogout();
+    };
+
+    const handleCopyMyId = () => {
+        if (!userId) {
+            return;
+        }
+        void (async () => {
+            try {
+                await copyText(userId);
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 2000);
+            } catch {
+                setCopied(false);
+            }
+        })();
     };
 
     const initials = getInitials(userName, login, text.userDefault);
@@ -185,6 +214,22 @@ export const UserMenu: React.FC<UserMenuProps> = ({ userName, login, avatarSrc, 
                         <Divider sx={{ my: 0.5 }} />
                     </>
                 )}
+                {userId ? (
+                    <MenuItem
+                        onClick={handleCopyMyId}
+                        aria-label="CopyMyId"
+                        title={text.copyMyIdHint}
+                    >
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                            <Typography sx={{ fontSize: '14px', color: '#202124' }}>
+                                {copied ? text.copied : text.copyMyId}
+                            </Typography>
+                            <Typography sx={{ fontSize: '12px', color: '#5F6368', mt: 0.25 }}>
+                                {text.copyMyIdHint}
+                            </Typography>
+                        </Box>
+                    </MenuItem>
+                ) : null}
                 {userName ? (
                     <MenuItem onClick={handleLogout}>
                         <Typography sx={{ fontSize: '14px', color: '#202124' }}>{text.logout}</Typography>

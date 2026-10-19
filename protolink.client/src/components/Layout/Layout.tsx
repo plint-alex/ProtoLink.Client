@@ -8,6 +8,7 @@ import { UserMenu } from './UserMenu';
 import { useAppDispatch, useAppSelector } from '../../store/store';
 import { logout } from '../../store/actions/thunkActions/authentication';
 import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
+import { useCommandsHub } from '../../hooks/useCommandsHub';
 import { textCatalogService } from '../../services/textCatalogService';
 import { resolveUserAvatarUrl } from '../../services/userAvatarService';
 import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../../constants/home';
@@ -43,6 +44,7 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
     const dispatch = useAppDispatch();
     const authentication = useAppSelector((state) => state.authentication);
     const isAuthenticated = Boolean(authentication?.accessToken);
+    useCommandsHub();
     const userHomePath = authentication?.userId ? `/${authentication.userId}` : null;
     const [layoutTexts, setLayoutTexts] = useState<Record<string, string>>({});
     const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
@@ -102,6 +104,7 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
         };
     }, [lang, location.pathname]);
 
+    const isRu = lang.toLowerCase().startsWith('ru');
     const layoutDefaults: Record<string, string> = {
         'layout-brand': 'ProtoLink',
         'layout-home': 'Home',
@@ -111,6 +114,11 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
         'layout-user-default': 'User',
         'layout-logo-alt': 'ProtoLink Logo',
         'layout-version-title': 'Client package version',
+        'layout-copy-my-id': isRu ? 'Скопировать мой ID' : 'Copy my ID',
+        'layout-copy-my-id-hint': isRu
+            ? 'Отправьте это тем, кто хочет дать вам доступ'
+            : 'Share this with people who want to give you access',
+        'layout-copied': isRu ? 'Скопировано' : 'Copied',
     };
     const t = (code: string) => layoutTexts[code] || layoutDefaults[code] || code;
 
@@ -249,12 +257,16 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                             <UserMenu
                                 userName={authentication?.userName}
                                 login={authentication?.login}
+                                userId={authentication?.userId}
                                 avatarSrc={avatarSrc}
                                 onLogout={handleLogout}
                                 text={{
                                     login: t('layout-login'),
                                     logout: t('layout-logout'),
                                     userDefault: t('layout-user-default'),
+                                    copyMyId: t('layout-copy-my-id'),
+                                    copyMyIdHint: t('layout-copy-my-id-hint'),
+                                    copied: t('layout-copied'),
                                 }}
                             />
                         ) : (

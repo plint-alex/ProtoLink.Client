@@ -6,11 +6,11 @@ import { Grid, Paper, Button, TextField, IconButton, Tooltip } from '@mui/materi
 import AddIcon from '@mui/icons-material/Add';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import DeleteIcon from '@mui/icons-material/Delete';
-//import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { styled } from '@mui/material/styles';
 import { selectEntities, useAppDispatch, useAppSelector } from '../../store/store';
 import { getEntities, deleteEntity, addParent, addEntityAndSelect } from '../../store/actions/thunkActions/entities';
 import type { Entity } from '../../types/entities';
+import { copyText } from '../../services/copyText';
 import { textCatalogService } from '../../services/textCatalogService';
 import { SYSTEM_PAGE_CODES } from '../../resources/routes-constants';
 
@@ -98,6 +98,10 @@ const Entities: React.FC = () => {
 
     const handleNavigate = (entityId: string) => {
         navigateWithParams(`/explorer/${entityId}`);
+    };
+
+    const handleCopyEntityId = (entityId: string) => {
+        void copyText(entityId);
     };
 
     useEffect(() => {
@@ -189,11 +193,13 @@ const Entities: React.FC = () => {
                                     <td>
                                         <StyledHiddenAction>
                                             <Tooltip title={`${t('explorer-copy')} ${entity.id}`}>
-                                                {/*<CopyToClipboard text={entity.id}>*/}
-                                                    <IconButton size="small" aria-label="CopyEntityId">
+                                                    <IconButton
+                                                        size="small"
+                                                        aria-label="CopyEntityId"
+                                                        onClick={() => handleCopyEntityId(entity.id)}
+                                                    >
                                                         <FileCopyIcon />
                                                     </IconButton>
-                                                {/*</CopyToClipboard>*/}
                                             </Tooltip>
                                             <Tooltip title={t('explorer-remove-entity')}>
                                                 <IconButton
@@ -235,11 +241,13 @@ const Entities: React.FC = () => {
                                     <td>
                                         <StyledHiddenAction>
                                             <Tooltip title={`${t('explorer-copy')} ${entity.id}`}>
-                                                {/*<CopyToClipboard text={entity.id}>*/}
-                                                    <IconButton size="small" aria-label="CopyEntityId">
+                                                    <IconButton
+                                                        size="small"
+                                                        aria-label="CopyEntityId"
+                                                        onClick={() => handleCopyEntityId(entity.id)}
+                                                    >
                                                         <FileCopyIcon />
                                                     </IconButton>
-                                               {/* </CopyToClipboard>*/}
                                             </Tooltip>
                                             <Tooltip title={t('explorer-remove-entity')}>
                                                 <IconButton
