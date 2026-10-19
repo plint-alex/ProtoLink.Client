@@ -2,6 +2,7 @@ export const ROUTES = {
     HOMEPAGE_ROUTE: '/',
     LOGIN_ROUTE: '/login',
     REGISTER_ROUTE: '/register',
+    CONFIRM_EMAIL_ROUTE: '/confirm-email',
     EXPLORER_ROUTE: '/explorer',
     TEST_ROUTE: '/test'
 } as const;
