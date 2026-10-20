@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { UserMenu } from './UserMenu'
@@ -20,6 +20,7 @@ const text = {
 
 describe('UserMenu Copy my ID', () => {
     afterEach(() => {
+        cleanup()
         vi.restoreAllMocks()
     })
 

@@ -1,0 +1,33 @@
+name: build
+
+on:
+  push:
+    branches: [AiGenerated, master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: protolink.client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: protolink.client/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # Lint with --max-warnings 0 is blocked until
+      # P2-20261019-client-eslint-warning-cleanup lands; enable then.
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test

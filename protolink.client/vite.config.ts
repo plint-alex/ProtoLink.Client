@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
@@ -42,5 +43,10 @@ export default defineConfig({
                 rewrite: path => path.replace(/^\//, '')
             }
         }
-    }
+    },
+    test: {
+        environment: 'jsdom',
+        globals: false,
+        setupFiles: ['./src/test/setup.ts'],
+    },
 });

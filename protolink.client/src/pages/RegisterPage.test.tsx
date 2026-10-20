@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider } from 'react-redux'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -49,6 +49,10 @@ function renderRegister(path = ROUTES.REGISTER_ROUTE) {
 describe('RegisterPage check-email notice', () => {
   beforeEach(() => {
     vi.mocked(axios.post).mockReset()
+  })
+
+  afterEach(() => {
+    cleanup()
   })
 
   async function fillAndSubmit(
