@@ -11,6 +11,23 @@ import {
 } from '@mui/material'
 import { urlLanguageService, Language } from '../services/urlLanguageService'
 
+const FALLBACK_LANGUAGES: Language[] = [
+  {
+    id: '00010002-0001-0000-0000-000000000000',
+    code: 'ru-RU',
+    name: 'Русский',
+    shortLabel: 'RU',
+    accessibilityName: 'Русский',
+  },
+  {
+    id: '00010002-0002-0000-0000-000000000000',
+    code: 'en-US',
+    name: 'English',
+    shortLabel: 'EN',
+    accessibilityName: 'English',
+  },
+]
+
 const UrlLanguageSelector: React.FC = () => {
   const [languages, setLanguages] = useState<Language[]>([])
   const [currentLanguage, setCurrentLanguage] = useState<string>('en-US')
@@ -22,34 +39,23 @@ const UrlLanguageSelector: React.FC = () => {
       try {
         setLoading(true)
         const langs = await urlLanguageService.loadLanguages()
-        setLanguages(langs)
-        
-        // Get current language from URL
-        const current = urlLanguageService.getLanguageFromUrl()
-        setCurrentLanguage(current)
+        setLanguages(langs.length ? langs : FALLBACK_LANGUAGES)
+        setCurrentLanguage(urlLanguageService.getLanguageFromUrl())
       } catch (error) {
         console.error('Error loading languages:', error)
-        // Fallback to default languages
-        setLanguages([
-          { id: '00010002-0002-0000-0000-000000000000', code: 'en-US', name: 'English', flag: '🇺🇸' },
-          { id: '00010002-0001-0000-0000-000000000000', code: 'ru-RU', name: 'Русский', flag: '🇷🇺' }
-        ])
+        setLanguages(FALLBACK_LANGUAGES)
       } finally {
         setLoading(false)
       }
     }
 
-    loadLanguages()
+    void loadLanguages()
   }, [])
 
   const handleLanguageChange = (event: SelectChangeEvent) => {
     const newLang = event.target.value
     setCurrentLanguage(newLang)
     urlLanguageService.setLanguage(newLang)
-  }
-
-  const getLanguageCode = (code: string): string => {
-    return code.split('-')[0]
   }
 
   if (loading) {
@@ -60,9 +66,15 @@ const UrlLanguageSelector: React.FC = () => {
     )
   }
 
+  const current = languages.find((item) => item.code === currentLanguage)
+
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 80 }}>
-      <Tooltip title={currentLanguage} arrow open={menuOpen ? false : undefined}>
+      <Tooltip
+        title={current?.accessibilityName || currentLanguage}
+        arrow
+        open={menuOpen ? false : undefined}
+      >
         <FormControl
           size="small"
           sx={{
@@ -98,54 +110,50 @@ const UrlLanguageSelector: React.FC = () => {
             variant="outlined"
             renderValue={(selected) => {
               const lang = languages.find((item) => item.code === selected)
-              if (!lang) {
-                return getLanguageCode(selected)
-              }
               return (
                 <Typography variant="caption" sx={{ color: '#202124', fontSize: '12px' }}>
-                  {getLanguageCode(lang.code)}
+                  {lang?.shortLabel || String(selected).slice(0, 2).toUpperCase()}
                 </Typography>
               )
             }}
-          MenuProps={{
-            PaperProps: {
-              sx: {
-                minWidth: 120
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  minWidth: 120
+                }
               }
-            }
-          }}
-          sx={{
-            color: '#202124',
-            '& .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'transparent',
-            },
-            '&:hover .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'rgba(60, 64, 67, 0.2)',
-            },
-            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-              borderColor: 'rgba(60, 64, 67, 0.3)',
-            },
-          }}
-        >
-          {languages.map((lang) => (
-            <MenuItem key={lang.id ?? lang.code} value={lang.code}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography sx={{ fontSize: '1.2em' }}>
-                  {lang.flag}
-                </Typography>
-                <Box>
+            }}
+            sx={{
+              color: '#202124',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'transparent',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(60, 64, 67, 0.2)',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(60, 64, 67, 0.3)',
+              },
+            }}
+          >
+            {languages.map((lang) => (
+              <MenuItem
+                key={lang.id ?? lang.code}
+                value={lang.code}
+                aria-label={lang.accessibilityName}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, minWidth: 28 }}>
+                    {lang.shortLabel}
+                  </Typography>
                   <Typography variant="body2" sx={{ lineHeight: 1 }}>
                     {lang.name}
                   </Typography>
-                  <Typography variant="caption" sx={{ lineHeight: 1 }}>
-                    {lang.code}
-                  </Typography>
                 </Box>
-              </Box>
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Tooltip>
     </Box>
   )

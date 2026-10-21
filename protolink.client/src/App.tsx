@@ -9,6 +9,7 @@ import FolderOutlined from '@mui/icons-material/FolderOutlined'
 import InsertDriveFileOutlined from '@mui/icons-material/InsertDriveFileOutlined'
 import { getEntities, getEntity, type GetEntitiesParams } from './store/actions/thunkActions/entities'
 import { pickLocalizedName, type EntityValueLike } from './constants/entityParents'
+import { filterByLanguage } from './services/filterByLanguage'
 import { urlLanguageService } from './services/urlLanguageService'
 import type { UnknownAction } from '@reduxjs/toolkit'
 import {
@@ -115,6 +116,13 @@ if (!w.react) {
                     (langCode) => urlLanguageService.getLanguageId(langCode)
                 );
             },
+            /** L4: hide language-tagged entities for other langs; untagged shown everywhere. */
+            filterByLanguage: (entities: unknown[], lang: string) =>
+                filterByLanguage(
+                    entities as Parameters<typeof filterByLanguage>[0],
+                    lang,
+                    (langCode) => urlLanguageService.getLanguageId(langCode)
+                ),
         },
         /** Guest-link session helpers for cloud-explorer read-only chrome (share-sheet-ux §5). */
         shareSession: {
