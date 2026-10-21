@@ -3,7 +3,7 @@ export interface ReducerData {
 }
 
 export type ReduxActionData<T> = {
-    type: any
+    type: string
     payload?: T
 }
 

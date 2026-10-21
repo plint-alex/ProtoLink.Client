@@ -1,55 +1,59 @@
-import axios from 'axios'
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { getStoredState } from 'redux-persist'
 import { persistConfig } from '../store/persistConfig';
 import type { RootState } from '../store/store';
+import {
+    getShareAccessToken,
+    getShareRawToken,
+    markShareCredentialUsed,
+    markShareSessionEnded,
+    clearShareSession,
+    reRedeemShareSession,
+} from '../services/shareSession'
+
 const CustomAxios = axios.create()
 
-const isTextRequest = (config: any): boolean => {
+type ShareAxiosConfig = InternalAxiosRequestConfig & {
+    /** Request already retried after share re-redeem — avoid loops. */
+    _shareRetried?: boolean
+    /** Request already retried with share JWT after user 403 — avoid loops. */
+    _shareFallbackRetried?: boolean
+}
+
+const isTextRequest = (config?: { headers?: Record<string, unknown> }): boolean => {
+    const headers = config?.headers
     const headerValue =
-        config?.headers?.['X-ProtoLink-Text-Request'] ??
-        config?.headers?.['x-protolink-text-request']
+        headers?.['X-ProtoLink-Text-Request'] ??
+        headers?.['x-protolink-text-request']
     return headerValue === '1' || headerValue === 1 || headerValue === true
 }
 
-//const toCamelCase: any = (object: any) => {
-//    let transformedObject = object
-//    if (typeof object === 'object' && object !== null) {
-//        if (object instanceof Array) {
-//            transformedObject = object.map(toCamelCase)
-//        } else {
-//            transformedObject = {}
-//            for (const key in object) {
-//                if (object[key] !== undefined) {
-//                    const newKey = key.replace(/(_\w)|(-\w)/g, (k) => k[1].toUpperCase())
-//                    transformedObject[newKey] = toCamelCase(object[key])
-//                }
-//            }
-//        }
-//    }
-//    return transformedObject
-//}
+function redirectToLogin(): void {
+    const currentUrl = new URL(window.location.href)
+    const lang = currentUrl.searchParams.get('lang') || 'en-US'
+    const returnPath = currentUrl.pathname
+    const returnUrl = lang ? `${returnPath}?lang=${lang}` : returnPath
+    window.location.href = `/login?logout&returnurl=${encodeURIComponent(returnUrl)}`
+}
 
-//export const toSnackCase: any = (object: any) => {
-//    let transformedObject = object
-//    if (typeof object === 'object' && object !== null) {
-//        if (object instanceof Array) {
-//            transformedObject = object.map(toSnackCase)
-//        } else {
-//            transformedObject = {}
-//            for (const key in object) {
-//                if (object[key] !== undefined) {
-//                    const newKey = key
-//                        .replace(/\.?([A-Z]+)/g, function (_, y) {
-//                            return '_' + y.toLowerCase()
-//                        })
-//                        .replace(/^_/, '')
-//                    transformedObject[newKey] = toSnackCase(object[key])
-//                }
-//            }
-//        }
-//    }
-//    return transformedObject
-//}
+/**
+ * S4 credential choice: prefer user JWT (never reduce privilege). Share JWT is the
+ * anonymous credential, or a one-shot fallback after user 403 (signed-in without personal grant).
+ */
+function pickBearer(userAccessToken: string | undefined, preferShare: boolean): string | null {
+    const shareJwt = getShareAccessToken()
+    const user = (userAccessToken || '').trim()
+    if (preferShare && shareJwt) {
+        markShareCredentialUsed()
+        return shareJwt
+    }
+    if (user) return user
+    if (shareJwt) {
+        markShareCredentialUsed()
+        return shareJwt
+    }
+    return null
+}
 
 CustomAxios.interceptors.response.use(
     (response) => {
@@ -66,8 +70,6 @@ CustomAxios.interceptors.response.use(
             }))
         }
 
-        //response.data = toCamelCase(response.data)
-        // Log the final URL that was actually sent for getEntity requests
         if (response.config.url && response.config.url.includes('getEntity')) {
             const requestUrl = response.request?.responseURL || response.config.url;
             console.log('[Axios Response Interceptor] Final request URL that was sent:', requestUrl);
@@ -76,27 +78,64 @@ CustomAxios.interceptors.response.use(
         }
         return response
     },
-    (error) => {
-        if (error.response?.status === 401) {
-            // Get current language parameter to preserve it
-            const currentUrl = new URL(window.location.href)
-            const lang = currentUrl.searchParams.get('lang') || 'en-US'
-            // Build clean login URL with only lang parameter, preserving the pathname for returnurl
-            const returnPath = currentUrl.pathname
-            const returnUrl = lang ? `${returnPath}?lang=${lang}` : returnPath
-            window.location.href = `/login?logout&returnurl=${encodeURIComponent(returnUrl)}`
-        } else {
-            return Promise.reject(error)
+    async (error: AxiosError) => {
+        const status = error.response?.status
+        const config = error.config as ShareAxiosConfig | undefined
+
+        // AT-S8: share JWT expired → silent re-redeem from sessionStorage; never bounce guest to /login.
+        if (status === 401 && config && getShareRawToken()) {
+            if (config._shareRetried) {
+                clearShareSession()
+                markShareSessionEnded()
+                return Promise.reject(error)
+            }
+            const refreshed = await reRedeemShareSession()
+            if (!refreshed) {
+                return Promise.reject(error)
+            }
+            const shareJwt = getShareAccessToken()
+            if (!shareJwt) {
+                return Promise.reject(error)
+            }
+            config._shareRetried = true
+            markShareCredentialUsed()
+            config.headers = config.headers ?? {}
+            config.headers.Authorization = `Bearer ${shareJwt}`
+            return CustomAxios.request(config)
         }
+
+        // Signed-in without personal grant: user JWT → 403, retry once with share JWT (S4 fallback).
+        if (status === 403 && config && getShareAccessToken() && !config._shareFallbackRetried) {
+            const authHeader = String(config.headers?.Authorization ?? '')
+            const shareJwt = getShareAccessToken()!
+            if (!authHeader.includes(shareJwt)) {
+                config._shareFallbackRetried = true
+                markShareCredentialUsed()
+                config.headers = config.headers ?? {}
+                config.headers.Authorization = `Bearer ${shareJwt}`
+                return CustomAxios.request(config)
+            }
+        }
+
+        if (status === 401) {
+            // No share session — existing signed-in behaviour.
+            redirectToLogin()
+            return
+        }
+
+        return Promise.reject(error)
     }
 )
 
 CustomAxios.interceptors.request.use(
     async (config) => {
         const state = await getStoredState(persistConfig) as RootState
-                //config.data = toSnackCase(config.data)
-        config.headers.Authorization = 'Bearer ' + state?.authentication?.accessToken
-        
+        const preferShare = Boolean((config as ShareAxiosConfig)._shareFallbackRetried)
+        const bearer = pickBearer(state?.authentication?.accessToken, preferShare)
+        if (bearer) {
+            config.headers.Authorization = 'Bearer ' + bearer
+        }
+
         if (isTextRequest(config)) {
             console.log('[TextRequest][Request]', JSON.stringify({
                 endpoint: config.url,
@@ -105,7 +144,6 @@ CustomAxios.interceptors.request.use(
             }))
         }
 
-        // Log request URL and params for debugging
         if (config.url && config.url.includes('getEntity')) {
             const fullUrl = config.baseURL ? `${config.baseURL}${config.url}` : config.url;
             console.log('[Axios Request Interceptor] Full URL that will be sent:', fullUrl);
@@ -119,7 +157,7 @@ CustomAxios.interceptors.request.use(
                 baseURL: config.baseURL
             }, null, 2));
         }
-        
+
         return config
     },
     (error) => {

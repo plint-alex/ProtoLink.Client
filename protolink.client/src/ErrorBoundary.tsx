@@ -21,7 +21,6 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Erro
         const w = window as unknown as { __debugMessages?: string[] }
         w.__debugMessages = w.__debugMessages || []
         w.__debugMessages.push(`[ErrorBoundary] ${String((error as Error)?.message)} | ${JSON.stringify(errorInfo)}`)
-        // eslint-disable-next-line no-console
         console.error('[ErrorBoundary]', error, errorInfo)
     }
 

@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { Button, IconButton, CircularProgress } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { styled } from '@mui/material/styles';
 import { getFiles, addFile, deleteFile } from '../../store/actions/thunkActions/files';
-import type { RootState } from '../../store/store';
+import { useAppDispatch, type RootState } from '../../store/store';
 
 const Image = styled('img')(() => ({
     height: '50px',
@@ -20,14 +20,14 @@ interface FileProps {
 }
 
 const File: React.FC<FileProps> = ({ entityId }) => {
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
     const inputRef = useRef<HTMLInputElement>(null);
     const files = useSelector((state: RootState) => entityId ? state.files.filesByEntity[entityId] : undefined);
     const loading = useSelector((state: RootState) => state.files.loading);
 
     useEffect(() => {
         if (entityId) {
-            dispatch(getFiles({ entityIds: [entityId] }) as any);
+            void dispatch(getFiles({ entityIds: [entityId] }));
         }
     }, [entityId, dispatch]);
 
@@ -38,15 +38,15 @@ const File: React.FC<FileProps> = ({ entityId }) => {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0] && entityId) {
             const file = e.target.files[0];
-            dispatch(addFile({ entityId, file }) as any).then(() => {
-                dispatch(getFiles({ entityIds: [entityId] }) as any);
+            void dispatch(addFile({ entityId, file })).then(() => {
+                void dispatch(getFiles({ entityIds: [entityId] }));
             });
         }
     };
 
     const handleDelete = (fileId: string) => {
-        dispatch(deleteFile({ fileId }) as any).then(() => {
-            if (entityId) dispatch(getFiles({ entityIds: [entityId] }) as any);
+        void dispatch(deleteFile({ fileId })).then(() => {
+            if (entityId) void dispatch(getFiles({ entityIds: [entityId] }));
         });
     };
 

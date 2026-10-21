@@ -10,6 +10,9 @@ describe('home constants', () => {
         expect(DEFAULT_HOME_ENTITY_ID).toBe(HOME_ENTITY_ID);
         expect(DEFAULT_HOME_ENTITY_ID).not.toBe(PUBLIC_DRIVE_ID);
         expect(getDynamicHomePath(null)).toBe(`/${HOME_ENTITY_ID}`);
+        expect(getDynamicHomePath(undefined)).toBe(`/${HOME_ENTITY_ID}`);
+        expect(getDynamicHomePath('')).toBe(`/${HOME_ENTITY_ID}`);
+        expect(getDynamicHomePath('  ')).toBe(`/${HOME_ENTITY_ID}`);
         expect(getDynamicHomePath('user-1')).toBe('/user-1');
     });
 });

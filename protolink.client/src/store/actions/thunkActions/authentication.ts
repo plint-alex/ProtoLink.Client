@@ -1,4 +1,5 @@
 import axios from '../../../utility/customAxios'
+import { isAxiosError } from 'axios'
 import { createAsyncThunk } from '@reduxjs/toolkit'
 import { AppDispatch, RootState } from '../../store'
 import { setAuthentication, authenticationData } from '../authentication'
@@ -109,9 +110,9 @@ export const register = createAsyncThunk<RegisterResult, { credentials: Register
         try {
             const response = await axios.post<RegisterResult>(`/api/authentication/register?lang=${lang}`, credentials)
             return response.data
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error(e)
-            if (e.response?.data) {
+            if (isAxiosError(e) && e.response?.data) {
                 return rejectWithValue(e.response.data as RegisterResult)
             }
             throw e

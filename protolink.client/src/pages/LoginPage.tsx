@@ -141,7 +141,7 @@ const LoginPage: React.FC = () => {
             // Check if login was rejected (error case)
             if (loginAction.rejected.match(result)) {
                 // Get error from the rejected value or from authData
-                const errorData = result.payload as any;
+                const errorData = result.payload as { error?: string } | undefined;
                 const errorMessage =
                     errorData?.error || store.getState().authentication?.error || t('login-error-generic');
                 setError('root', {

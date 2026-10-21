@@ -5,7 +5,9 @@ import {
     CLOUD_FILE_CODE,
     MIME_TYPE_ENTITY_ID,
     NAME_TYPE_ENTITY_ID,
-    TYPE_OF_VALUE_STRING
+    TYPE_OF_VALUE_STRING,
+    buildOwnerAndPublicReadPermissions,
+    type AddEntityPermissionPayload,
 } from '../../../constants/cloudEntities'
 
 const entitiesBase = '/api/entities/'
@@ -50,6 +52,15 @@ export interface AddFileParams {
     /** Folder (parent) entity id — a new CloudFile child is created and uploaded */
     entityId: string
     file: File
+    /**
+     * When true, AddEntity includes owner write + public read (avatar / public gallery).
+     * Default false — private CloudFiles stay creator-only after file ACL.
+     */
+    publicRead?: boolean
+    /** Required when publicRead is true (permissionForId for the owner write grant). */
+    ownerUserId?: string
+    /** Optional explicit Permissions list; overrides publicRead helper when set. */
+    permissions?: AddEntityPermissionPayload[]
 }
 
 export interface GetFileParams {
@@ -77,8 +88,15 @@ export interface FileResult {
 
 export const addFile = createAsyncThunk<{ Success: string }, AddFileParams>(
     'files/addFile',
-    async ({ entityId, file }) => {
+    async ({ entityId, file, publicRead, ownerUserId, permissions }) => {
         const displayName = (file?.name && file.name.trim()) || 'upload'
+        let resolvedPermissions = permissions
+        if (!resolvedPermissions && publicRead) {
+            if (!ownerUserId?.trim()) {
+                throw new Error('ownerUserId is required when publicRead is true')
+            }
+            resolvedPermissions = buildOwnerAndPublicReadPermissions(ownerUserId)
+        }
         const addRes = await axios.post<{ id: string }>(`${entitiesBase}addEntity`, {
             name: displayName,
             description: '',
@@ -93,7 +111,8 @@ export const addFile = createAsyncThunk<{ Success: string }, AddFileParams>(
                     value: displayName,
                     parentIds: [NAME_TYPE_ENTITY_ID]
                 }
-            ]
+            ],
+            ...(resolvedPermissions?.length ? { permissions: resolvedPermissions } : {}),
         })
         const cloudFileId = addRes.data?.id
         if (!cloudFileId) {

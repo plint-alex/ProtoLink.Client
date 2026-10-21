@@ -11,10 +11,12 @@ import { styled } from '@mui/material/styles';
 import Editor from './Editor';
 import File from './File';
 import PermissionsEditor from './PermissionsEditor';
-import type { EntityValue } from '../../types/entities';
+import type { Entity, EntityValue } from '../../types/entities';
 import { useFormik } from 'formik';
 import { Dictionary } from '../../types/dictionary';
 import { useSelector } from 'react-redux';
+import type { RootState } from '../../store/store';
+import type { EntitiesStatePart } from '../../store/entitiesSlice';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -38,7 +40,7 @@ interface ParentsEditorProps {
     parents: string[];
     onAddParent: (parentId: string) => void;
     onRemoveParent: (index: number) => void;
-    entities: Dictionary<any>;
+    entities: Dictionary<Entity>;
 }
 
 const ParentsEditor: React.FC<ParentsEditorProps> = ({ parents, onAddParent, onRemoveParent, entities }) => {
@@ -89,7 +91,7 @@ interface ViewsEditorProps {
     viewIds: string[];
     onAddView: (viewId: string) => void;
     onRemoveView: (index: number) => void;
-    entities: Dictionary<any>;
+    entities: Dictionary<Entity>;
 }
 
 const ViewsEditor: React.FC<ViewsEditorProps> = ({ viewIds, onAddView, onRemoveView, entities }) => {
@@ -143,7 +145,7 @@ const EntityComponent: React.FC = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogValue, setDialogValue] = useState('');
     const [currentValueIndex, setCurrentValueIndex] = useState<number>(-1);
-    const entities = useSelector((state: any) => state.entities.entities);
+    const entities = useSelector((state: RootState) => (state.entities as EntitiesStatePart).entities);
 
     useEffect(() => {
         if (entityId) {
@@ -162,7 +164,7 @@ const EntityComponent: React.FC = () => {
         },
         onSubmit: (values) => {
             if (entityId) {
-                dispatch(updateEntity({
+                void dispatch(updateEntity({
                     id: entityId,
                     code: values.code,
                     parentIds: values.mainParentId ? [values.mainParentId] : undefined,
@@ -170,7 +172,7 @@ const EntityComponent: React.FC = () => {
                     order: undefined,
                     hidden: undefined,
                     version: entity?.version,
-                }) as any);
+                }));
                 setSaveOk(true);
             }
         },
@@ -249,7 +251,7 @@ const EntityComponent: React.FC = () => {
                                         formik.setFieldValue('viewIds', [...(formik.values.viewIds || []), viewId]);
                                     }}
                                     onRemoveView={idx => {
-                                        formik.setFieldValue('viewIds', formik.values.viewIds.filter((_: any, i: number) => i !== idx));
+                                        formik.setFieldValue('viewIds', formik.values.viewIds.filter((_: string, i: number) => i !== idx));
                                     }}
                                     entities={entities}
                                 />
@@ -339,7 +341,7 @@ const EntityComponent: React.FC = () => {
                                         }}
                                         onRemoveParent={parentIdx => {
                                             const updated = [...formik.values.values];
-                                            updated[index] = { ...updated[index], parents: updated[index].parents.filter((_: any, i: number) => i !== parentIdx) };
+                                            updated[index] = { ...updated[index], parents: updated[index].parents.filter((_: string, i: number) => i !== parentIdx) };
                                             formik.setFieldValue('values', updated);
                                         }}
                                         entities={entities}

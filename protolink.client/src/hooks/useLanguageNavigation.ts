@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
+type WindowWithLanguage = Window & { currentLanguage?: string }
+
 export const useLanguageNavigation = () => {
   const location = useLocation()
 
@@ -20,11 +22,11 @@ export const useLanguageNavigation = () => {
       }
       
       // Update global variables
-      ;(window as any).currentLanguage = currentLang
+      ;(window as WindowWithLanguage).currentLanguage = currentLang
       document.body.setAttribute('data-current-language', currentLang)
-    } catch (error) {
+    } catch {
       // Fallback
-      ;(window as any).currentLanguage = 'en-US'
+      ;(window as WindowWithLanguage).currentLanguage = 'en-US'
       document.body.setAttribute('data-current-language', 'en-US')
     }
   }, [location.search, location.pathname])

@@ -7,6 +7,13 @@ export interface Language {
   flag: string
 }
 
+type WindowWithLanguage = Window & { currentLanguage?: string }
+
+type LanguageEntityDto = {
+  id?: string
+  code?: string
+}
+
 class UrlLanguageService {
   private static instance: UrlLanguageService
   private languages: Language[] = []
@@ -37,7 +44,7 @@ class UrlLanguageService {
     }
 
     // Set global variables for dynamic scripts
-    (window as any).currentLanguage = this.currentLanguage
+    ;(window as WindowWithLanguage).currentLanguage = this.currentLanguage
     document.body.setAttribute('data-current-language', this.currentLanguage)
   }
 
@@ -77,11 +84,11 @@ class UrlLanguageService {
 
         if (response.ok) {
           const data = await response.json()
-          this.languages = data.map((entity: any) => ({
+          this.languages = (data as LanguageEntityDto[]).map((entity) => ({
             id: entity.id,
-            code: entity.code,
-            name: this.getLanguageName(entity.code),
-            flag: this.getLanguageFlag(entity.code)
+            code: entity.code ?? '',
+            name: this.getLanguageName(entity.code ?? ''),
+            flag: this.getLanguageFlag(entity.code ?? '')
           }))
           this.languageIdByCode = this.languages.reduce<Record<string, string>>((acc, lang) => {
             if (lang.id) {
@@ -155,7 +162,7 @@ class UrlLanguageService {
     window.location.replace(currentUrl.toString())
 
     // Set global variables for dynamic scripts (in case they run before reload)
-    ;(window as any).currentLanguage = lang
+    ;(window as WindowWithLanguage).currentLanguage = lang
     document.body.setAttribute('data-current-language', lang)
 
     // Trigger a custom event even though the page reloads

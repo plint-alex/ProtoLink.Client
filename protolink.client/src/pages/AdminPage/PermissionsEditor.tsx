@@ -4,7 +4,7 @@ import { getPermissions, addPermissionNew, removePermission } from '../../store/
 import { Grid, TextField, Typography, IconButton, Tooltip, Chip, Stack, Switch, FormControlLabel, Badge } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { styled } from '@mui/material/styles';
-import type { Permission } from '../../types/entities';
+import type { Entity, Permission } from '../../types/entities';
 import { Dictionary } from '../../types/dictionary';
 import { Snackbar, Alert } from '@mui/material';
 
@@ -14,7 +14,14 @@ const StyledChip = styled(Chip)(({ theme }) => ({
 
 interface PermissionsEditorProps {
     entityId: string;
-    entities: Dictionary<any>;
+    entities: Dictionary<Entity>;
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+    if (error && typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
+        return (error as { message: string }).message;
+    }
+    return fallback;
 }
 
 const PermissionsEditor: React.FC<PermissionsEditorProps> = ({ entityId, entities }) => {
@@ -25,25 +32,25 @@ const PermissionsEditor: React.FC<PermissionsEditorProps> = ({ entityId, entitie
     const [canWrite, setCanWrite] = useState(false);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' });
 
-    useEffect(() => {
-        if (entityId) {
-            loadPermissions();
-        }
-    }, [entityId]);
-
-    const loadPermissions = async () => {
+    const loadPermissions = React.useCallback(async () => {
         setLoading(true);
         try {
             const result = await dispatch(getPermissions({ entityId }));
             if (getPermissions.fulfilled.match(result)) {
                 setPermissions(result.payload);
             }
-        } catch (error) {
-            showSnackbar('Failed to load permissions', 'error');
+        } catch {
+            setSnackbar({ open: true, message: 'Failed to load permissions', severity: 'error' });
         } finally {
             setLoading(false);
         }
-    };
+    }, [dispatch, entityId]);
+
+    useEffect(() => {
+        if (entityId) {
+            void loadPermissions();
+        }
+    }, [entityId, loadPermissions]);
 
     const showSnackbar = (message: string, severity: 'success' | 'error') => {
         setSnackbar({ open: true, message, severity });
@@ -79,8 +86,8 @@ const PermissionsEditor: React.FC<PermissionsEditorProps> = ({ entityId, entitie
             setPermissionForIdToAdd('');
             setCanWrite(false);
             loadPermissions();
-        } catch (error: any) {
-            showSnackbar(error?.message || 'Failed to add permission', 'error');
+        } catch (error: unknown) {
+            showSnackbar(errorMessage(error, 'Failed to add permission'), 'error');
         }
     };
 
@@ -92,9 +99,9 @@ const PermissionsEditor: React.FC<PermissionsEditorProps> = ({ entityId, entitie
             })).unwrap();
             
             showSnackbar('Permission removed successfully', 'success');
-            loadPermissions();
-        } catch (error: any) {
-            showSnackbar(error?.message || 'Failed to remove permission', 'error');
+            void loadPermissions();
+        } catch (error: unknown) {
+            showSnackbar(errorMessage(error, 'Failed to remove permission'), 'error');
         }
     };
 

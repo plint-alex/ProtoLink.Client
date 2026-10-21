@@ -16,11 +16,9 @@ const rootEl = document.getElementById('root')!
 
 // Global error handlers
 window.addEventListener('error', (e) => {
-  // eslint-disable-next-line no-console
   console.error('[window.error]', e.message, e.error)
 })
 window.addEventListener('unhandledrejection', (e) => {
-  // eslint-disable-next-line no-console
   console.error('[unhandledrejection]', e.reason)
 })
 

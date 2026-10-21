@@ -4,11 +4,13 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import { Layout } from './components/Layout'
 import NotFoundPage from './pages/NotFoundPage'
+import EntityHomeRoute from './components/EntityHomeRoute'
 import { ROUTES } from './resources/routes-constants'
 import AdminPage from './pages/AdminPage/AdminPage'
 import TestPage from './pages/TestPage'
 import RegisterPage from './pages/RegisterPage'
 import ConfirmEmailPage from './pages/ConfirmEmailPage'
+import ShareRedeemPage from './pages/ShareRedeemPage'
 
 const RootComponent: React.FC = () => {
     return (
@@ -22,10 +24,11 @@ const RootComponent: React.FC = () => {
                         <Route path={ROUTES.EXPLORER_ROUTE + '/:id'} element={<AdminPage />} />
                         <Route path={ROUTES.LOGIN_ROUTE} element={<LoginPage />} />
                         <Route path={ROUTES.REGISTER_ROUTE} element={<RegisterPage />} />
-                        {/* Public: must be before /:id so confirm-email is not treated as an entity */}
+                        {/* Public: must be before /:id so confirm-email / share are not treated as entities */}
                         <Route path={ROUTES.CONFIRM_EMAIL_ROUTE} element={<ConfirmEmailPage />} />
-                        {/* After static paths: entity GUID in URL (user profile, etc.) */}
-                        <Route path="/:id" element={<HomePage />} />
+                        <Route path={ROUTES.SHARE_ROUTE} element={<ShareRedeemPage />} />
+                        {/* C2: /{guid}, /{guid}-{slug}, /{guid}/{anything} — id alone resolves */}
+                        <Route path="/:id/*" element={<EntityHomeRoute />} />
                         <Route path="*" element={<NotFoundPage />} />
                 </Routes>
             </Layout>

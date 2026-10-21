@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { CircularProgress, Skeleton, Stack } from '@mui/material';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
 import LockOutlined from '@mui/icons-material/LockOutlined';
@@ -13,8 +13,16 @@ import EntityState from '../components/EntityState';
 import { useDelayedFlag } from '../hooks/useDelayedFlag';
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams';
 import { DEFAULT_HOME_ENTITY_ID, DEFAULT_HOME_LANG } from '../constants/home';
+import { SEARCH_PAGE_ENTITY_ID } from '../constants/searchPage';
 import { TOP_MENU_DEFAULTS_EN, textCatalogService } from '../services/textCatalogService';
 import { ROUTES, SYSTEM_PAGE_CODES } from '../resources/routes-constants';
+import { clearShareSessionEnded, isShareSessionEnded } from '../services/shareSession';
+import { resolveEntityCode } from '../services/search/resolveEntityCode';
+import { parseEntityIdFromSegment, pushRecentEntity } from '../services/search/searchHelpers';
+import {
+    getSubtreeRefreshVersion,
+    subscribeSubtreeRefresh,
+} from '../services/subtreeRefreshBus';
 
 const EMPTY_MAPPINGS: readonly EntityViewMapping[] = [];
 const LOADING_SKELETON_DELAY_MS = 300;
@@ -26,7 +34,7 @@ type ViewLoad = {
 };
 
 const HomePage: React.FC = () => {
-    const { id: routeEntityId } = useParams<{ id?: string }>();
+    const { id: routeSegment } = useParams<{ id?: string }>();
     const [searchParams] = useSearchParams();
     const location = useLocation();
     const dispatch = useAppDispatch();
@@ -39,8 +47,49 @@ const HomePage: React.FC = () => {
     const catalogLang = lang || DEFAULT_HOME_LANG;
     const [shellTexts, setShellTexts] = useState<Record<string, string>>({});
     const [viewLoad, setViewLoad] = useState<ViewLoad | null>(null);
+    const [codeResolveFailed, setCodeResolveFailed] = useState(false);
+    const [resolvingCode, setResolvingCode] = useState(false);
+    const recentTrackedRef = useRef<string | null>(null);
 
-    const entityId = routeEntityId;
+    // C2: GUID or GUID-slug in the first segment; trailing /{anything} is ignored for load.
+    const parsedRouteEntityId = parseEntityIdFromSegment(routeSegment);
+
+    // D4: non-GUID path segments (e.g. /search) resolve via ResolveCode → replace to /{guid}.
+    useEffect(() => {
+        if (!routeSegment) {
+            setCodeResolveFailed(false);
+            setResolvingCode(false);
+            return;
+        }
+        if (parsedRouteEntityId) {
+            setCodeResolveFailed(false);
+            setResolvingCode(false);
+            return;
+        }
+        let cancelled = false;
+        setResolvingCode(true);
+        setCodeResolveFailed(false);
+        void resolveEntityCode(routeSegment).then((id) => {
+            if (cancelled) return;
+            setResolvingCode(false);
+            if (!id) {
+                setCodeResolveFailed(true);
+                return;
+            }
+            const qs = location.search || '';
+            navigateWithParams(`/${id}${qs}`, { replace: true });
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [routeSegment, parsedRouteEntityId, navigateWithParams, location.search]);
+
+    const entityId = parsedRouteEntityId ?? undefined;
+    const subtreeRefreshVersion = useSyncExternalStore(
+        subscribeSubtreeRefresh,
+        getSubtreeRefreshVersion,
+        getSubtreeRefreshVersion
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -67,13 +116,14 @@ const HomePage: React.FC = () => {
     // All hooks must be called before any conditional returns
     const entitiesState = useAppSelector((state) => state.entities as EntitiesStatePart);
     const authentication = useAppSelector((state) => state.authentication);
+    const currentEntity = useAppSelector((state) => state.entities.currentEntity);
     const mappings = entityId ? (entitiesState.entityViews?.[entityId] ?? EMPTY_MAPPINGS) : EMPTY_MAPPINGS;
     const isAuthenticated = Boolean(authentication?.accessToken);
     const userHomeId = authentication?.userId?.trim();
 
     // Redirect `/`: signed-in users → their home entity; anonymous → public ProtoLink home entity.
     useEffect(() => {
-        if (routeEntityId !== undefined) {
+        if (routeSegment !== undefined) {
             return;
         }
         const langParam = searchParams.get('lang') ?? DEFAULT_HOME_LANG;
@@ -83,7 +133,7 @@ const HomePage: React.FC = () => {
         } else {
             navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}?${q}`, { replace: true });
         }
-    }, [routeEntityId, navigateWithParams, searchParams, isAuthenticated, userHomeId]);
+    }, [routeSegment, navigateWithParams, searchParams, isAuthenticated, userHomeId]);
 
     // When the URL already contains an entity id (e.g. public home id from the logo), never redirect away from it.
 
@@ -109,6 +159,33 @@ const HomePage: React.FC = () => {
             cancelled = true;
         };
     }, [entityId, lang, dispatch]);
+
+    // Pattern 6 palette idle: last 8 opened entities (client-local).
+    useEffect(() => {
+        if (!entityId || !viewLoad?.done || viewLoad.error) return;
+        if (entityId.toLowerCase() === SEARCH_PAGE_ENTITY_ID.toLowerCase()) return;
+        if (recentTrackedRef.current === entityId.toLowerCase()) return;
+        recentTrackedRef.current = entityId.toLowerCase();
+        const fromCurrent =
+            currentEntity &&
+            String(currentEntity.id || '').toLowerCase() === entityId.toLowerCase()
+                ? currentEntity
+                : null;
+        const title =
+            (fromCurrent?.code && String(fromCurrent.code).trim()) ||
+            entityId;
+        const typeTag = fromCurrent?.code ? String(fromCurrent.code) : undefined;
+        try {
+            pushRecentEntity(window.localStorage, {
+                id: entityId,
+                title,
+                typeTag,
+                openedAt: Date.now(),
+            });
+        } catch {
+            /* ignore */
+        }
+    }, [entityId, viewLoad, currentEntity]);
 
     const viewId = useMemo(() => {
         if (!entityId || !mappings || mappings.length === 0) {
@@ -137,7 +214,7 @@ const HomePage: React.FC = () => {
 
     // If no entity ID in URL, show loading while redirect happens
     // This check must come AFTER all hooks are called
-    if (routeEntityId === undefined) {
+    if (routeSegment === undefined || resolvingCode || (!entityId && !codeResolveFailed)) {
         return (
             <Stack spacing={2} sx={{ p: 3 }}>
                 <CircularProgress sx={{ alignSelf: 'center' }} />
@@ -150,13 +227,44 @@ const HomePage: React.FC = () => {
         label: t('home-sign-in'),
         to: `${ROUTES.LOGIN_ROUTE}?returnurl=${encodeURIComponent(`${location.pathname}${location.search}`)}`,
     };
+    // AT-S27: after redeem/re-redeem failure, Pattern 5 uses link wording (never GUID/HTTP).
+    const linkSessionEnded = isShareSessionEnded();
+
+    if (codeResolveFailed) {
+        return (
+            <Stack spacing={2} sx={{ p: 3 }}>
+                <EntityState
+                    icon={<SearchOff />}
+                    title={t('home-not-found')}
+                    action={goHome}
+                    detailsLabel={t('home-details')}
+                />
+            </Stack>
+        );
+    }
 
     const renderLoadError = (error: ViewLoadError) => {
-        const common = { detailsLabel: t('home-details'), details: error.detail };
+        const common = {
+            detailsLabel: t('home-details'),
+            details: linkSessionEnded ? undefined : error.detail,
+        };
         if (error.code === 'not_found') {
             return <EntityState icon={<SearchOff />} title={t('home-not-found')} action={goHome} {...common} />;
         }
         if (error.code === 'no_access') {
+            if (linkSessionEnded) {
+                clearShareSessionEnded();
+                return (
+                    <EntityState
+                        icon={<LockOutlined />}
+                        title={t('home-link-unavailable')}
+                        subtitle={t('home-link-unavailable-body')}
+                        action={signIn}
+                        secondaryAction={{ label: t('home-go-protolink'), to: ROUTES.HOMEPAGE_ROUTE }}
+                        detailsLabel={t('home-details')}
+                    />
+                );
+            }
             return (
                 <EntityState
                     icon={<LockOutlined />}
@@ -176,7 +284,11 @@ const HomePage: React.FC = () => {
 
             {!loadError && DynamicComponent && (
                 <ErrorBoundary>
-                    <DynamicComponent entityId={entityId} lang={lang} />
+                    <DynamicComponent
+                        key={`${entityId}-${subtreeRefreshVersion}`}
+                        entityId={entityId}
+                        lang={lang}
+                    />
                 </ErrorBoundary>
             )}
 

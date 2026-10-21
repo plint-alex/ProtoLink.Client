@@ -9,15 +9,19 @@ type GlobalViewsState = {
   loadedViewIds: Set<string>
 }
 
+type WindowWithViews = Window & {
+  __protolinkViews?: GlobalViewsState
+}
+
 function getGlobalViewsState(): GlobalViewsState {
-  const g = window as any
+  const g = window as WindowWithViews
   if (!g.__protolinkViews) {
     g.__protolinkViews = {
       cacheByEntityId: {},
       loadedViewIds: new Set<string>()
     }
   }
-  return g.__protolinkViews as GlobalViewsState
+  return g.__protolinkViews
 }
 
 function simpleHash(input: string): string {
@@ -45,6 +49,10 @@ export interface GetEntitiesParams {
         fromCache?: boolean
         /** When true (default), matches API GetEntitiesContract.includeValues */
         includeValues?: boolean
+        /** S6 Shared with me: list caller's share roots (direct grants). */
+        sharedWithMe?: boolean
+        /** 1 id = self-chat; 2 ids = pair. Server filters sender:/receiver:, newest-first. */
+        conversationUserIds?: string[]
     }
     storageVariable?: string
     cache?: boolean 
@@ -181,7 +189,9 @@ export const getEntities = createAsyncThunk<{
                 idsToFindParents: params.data?.idsToFindParents,
                 skip: params.data?.skip,
                 take: params.data?.take,
-                includeValues: params.data?.includeValues ?? true
+                includeValues: params.data?.includeValues ?? true,
+                sharedWithMe: params.data?.sharedWithMe === true,
+                conversationUserIds: params.data?.conversationUserIds,
             });
             return {
                 data: response.data,
@@ -466,7 +476,7 @@ export const loadViewScript = createAsyncThunk<
                 (viewData.entityViews || [])
                     .map((m) => m.viewId)
                     .filter((v): v is string => !!v)
-                    .every((id) => typeof (window as any)[id] === 'function');
+                    .every((id) => typeof (window as unknown as Record<string, unknown>)[id] === 'function');
 
             if (scriptText && (!gv.loadedViewIds.has(cacheKey) || !hasAllMappedComponents)) {
                 const script = document.createElement('script');

@@ -7,9 +7,17 @@ import { ThemeProvider, createTheme } from '@mui/material/styles'
 import * as material from '@mui/material'
 import FolderOutlined from '@mui/icons-material/FolderOutlined'
 import InsertDriveFileOutlined from '@mui/icons-material/InsertDriveFileOutlined'
-import { getEntities, getEntity } from './store/actions/thunkActions/entities'
-import { pickLocalizedName } from './constants/entityParents'
+import { getEntities, getEntity, type GetEntitiesParams } from './store/actions/thunkActions/entities'
+import { pickLocalizedName, type EntityValueLike } from './constants/entityParents'
 import { urlLanguageService } from './services/urlLanguageService'
+import type { UnknownAction } from '@reduxjs/toolkit'
+import {
+    getShareAccessToken,
+    getShareRawToken,
+    getShareSessionMeta,
+    markShareCredentialUsed,
+    wasShareCredentialUsed,
+} from './services/shareSession'
 
 // Expose limited globals for dynamic views
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,12 +59,19 @@ if (!w.react) {
     w['internal'] = {
         ...existingInternal,
         apiRequest: async (path: string, method: string, body?: unknown) => {
-            const token = store.getState().authentication?.accessToken;
+            // Prefer user JWT (S4: never reduce privilege); fall back to share JWT for guests.
+            const userToken = (store.getState().authentication?.accessToken || '').trim();
+            const shareToken = getShareAccessToken();
+            let bearer = userToken || shareToken;
+            if (!userToken && shareToken) {
+                markShareCredentialUsed();
+                bearer = shareToken;
+            }
             const headers: Record<string, string> = {
                 Accept: 'application/json',
                 'Content-Type': 'application/json',
             };
-            if (token) headers.Authorization = `Bearer ${token}`;
+            if (bearer) headers.Authorization = `Bearer ${bearer}`;
             const res = await fetch(`/api/${path}`.replace(/\/+/, '/'), {
                 method,
                 headers,
@@ -73,28 +88,17 @@ if (!w.react) {
         },
         store: {
             getState: () => store.getState(),
-            dispatch: (action: unknown) => store.dispatch(action as any),
+            dispatch: (action: unknown) => store.dispatch(action as UnknownAction),
         },
         entities: {
-            getEntities: (params: {
-                data: {
-                    ids?: string[];
-                    idsToFindParents?: string[];
-                    parentIds?: string[];
-                    skip?: number;
-                    take?: number;
-                    includeValues?: boolean;
-                };
-                storageVariable?: string;
-                cache?: boolean;
-            }) => store.dispatch(getEntities(params as any)),
+            getEntities: (params: GetEntitiesParams) => store.dispatch(getEntities(params)),
             getEntity: (params: { id: string; version?: number; lang?: string; fromCache?: boolean }) =>
                 store.dispatch(getEntity(params)),
         },
         localization: {
             getLanguageId: (langCode: string) => urlLanguageService.getLanguageId(langCode),
             pickLocalizedName: (values: unknown[], lang: string | undefined, fallback: string) =>
-                pickLocalizedName(values as any, lang, fallback, (langCode) => urlLanguageService.getLanguageId(langCode)),
+                pickLocalizedName(values as EntityValueLike[], lang, fallback, (langCode) => urlLanguageService.getLanguageId(langCode)),
             /** Always prefer awaiting this before pickLocalizedName so language parent GUIDs resolve. */
             loadLanguages: () => urlLanguageService.loadLanguages(),
             /** Convenience: load language entities then pick (use from dynamic views). */
@@ -105,12 +109,20 @@ if (!w.react) {
             ) => {
                 await urlLanguageService.loadLanguages();
                 return pickLocalizedName(
-                    values as any,
+                    values as EntityValueLike[],
                     lang,
                     fallback,
                     (langCode) => urlLanguageService.getLanguageId(langCode)
                 );
             },
+        },
+        /** Guest-link session helpers for cloud-explorer read-only chrome (share-sheet-ux §5). */
+        shareSession: {
+            hasSession: () => Boolean(getShareRawToken()),
+            /** True when Authorization used the share JWT (anon guest or signed-in fallback). */
+            isGuestMode: () => wasShareCredentialUsed(),
+            getRootEntityId: () => getShareSessionMeta()?.entityId ?? null,
+            getAccessToken: () => getShareAccessToken(),
         },
     };
     
@@ -185,7 +197,6 @@ const theme = createTheme({
 const App: React.FC = () => {
     // Minimal debug visibility on page
     if (typeof window !== 'undefined') {
-        // eslint-disable-next-line no-console
         console.log('[App] mount', {
             location: window.location.href,
         })

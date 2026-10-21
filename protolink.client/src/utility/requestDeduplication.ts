@@ -9,7 +9,7 @@ type PendingRequest<T> = {
 };
 
 class RequestDeduplication {
-    private pendingRequests: Map<string, PendingRequest<any>> = new Map();
+    private pendingRequests = new Map<string, PendingRequest<unknown>>();
     private readonly REQUEST_TIMEOUT = 60000; // 60 seconds - clean up stale requests
 
     /**
@@ -27,7 +27,7 @@ class RequestDeduplication {
         // Check if there's already a pending request with this key
         const existing = this.pendingRequests.get(key);
         if (existing) {
-            return existing.promise;
+            return existing.promise as Promise<T>;
         }
 
         // Create new request
@@ -55,7 +55,7 @@ class RequestDeduplication {
     /**
      * Generate a unique key for a request based on its parameters
      */
-    generateKey(prefix: string, params: Record<string, any>): string {
+    generateKey(prefix: string, params: Record<string, unknown>): string {
         const sortedParams = Object.keys(params)
             .sort()
             .map(key => `${key}:${JSON.stringify(params[key])}`)

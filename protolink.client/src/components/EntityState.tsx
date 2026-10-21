@@ -12,12 +12,22 @@ type EntityStateProps = {
     title: string;
     subtitle?: string;
     action: EntityStateAction;
+    /** Optional secondary CTA (e.g. "Go to ProtoLink" under Sign in for dead guest links). */
+    secondaryAction?: EntityStateAction;
     detailsLabel: string;
     details?: string;
 };
 
 /** UX Pattern 5 state: plain wording + one primary action; raw detail only behind a Details toggle. */
-const EntityState: React.FC<EntityStateProps> = ({ icon, title, subtitle, action, detailsLabel, details }) => {
+const EntityState: React.FC<EntityStateProps> = ({
+    icon,
+    title,
+    subtitle,
+    action,
+    secondaryAction,
+    detailsLabel,
+    details,
+}) => {
     const [showDetails, setShowDetails] = useState(false);
 
     return (
@@ -32,6 +42,16 @@ const EntityState: React.FC<EntityStateProps> = ({ icon, title, subtitle, action
             <Button variant="contained" component={RouterLink} to={action.to} sx={{ textTransform: 'none' }}>
                 {action.label}
             </Button>
+            {secondaryAction && (
+                <Button
+                    variant="text"
+                    component={RouterLink}
+                    to={secondaryAction.to}
+                    sx={{ textTransform: 'none' }}
+                >
+                    {secondaryAction.label}
+                </Button>
+            )}
             {details && (
                 <>
                     <Button size="small" color="inherit" onClick={() => setShowDetails((v) => !v)} sx={{ textTransform: 'none' }}>

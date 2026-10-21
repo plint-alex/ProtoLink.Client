@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react'
 
+type TextParams = unknown[]
+
 interface LanguageContextType {
   language: string
   setLanguage: (lang: string) => void
-  getText: (key: string, params?: any[]) => Promise<string>
-  getTextSync: (key: string, params?: any[]) => string
+  getText: (key: string, params?: TextParams) => Promise<string>
+  getTextSync: (key: string, params?: TextParams) => string
   isLoading: boolean
 }
 
@@ -14,6 +16,8 @@ interface LanguageProviderProps {
   children: ReactNode
 }
 
+type WindowWithLanguage = Window & { currentLanguage?: string }
+
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
   const [language, setLanguageState] = useState<string>('en-US')
   const [isLoading] = useState(false)
@@ -21,15 +25,17 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   const handleSetLanguage = (lang: string) => {
     setLanguageState(lang)
     localStorage.setItem('preferred-language', lang)
-    ;(window as any).currentLanguage = lang
+    ;(window as WindowWithLanguage).currentLanguage = lang
     document.body.setAttribute('data-current-language', lang)
   }
 
-  const getText = async (key: string, _params?: any[]): Promise<string> => {
+  const getText = async (key: string, _params?: TextParams): Promise<string> => {
+    void _params
     return key
   }
 
-  const getTextSync = (key: string, _params?: any[]): string => {
+  const getTextSync = (key: string, _params?: TextParams): string => {
+    void _params
     return key
   }
 
@@ -48,6 +54,7 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook paired with provider
 export const useLanguage = (): LanguageContextType => {
   const context = useContext(LanguageContext)
   if (context === undefined) {
