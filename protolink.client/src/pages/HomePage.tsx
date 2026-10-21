@@ -20,6 +20,10 @@ import { clearShareSessionEnded, isShareSessionEnded } from '../services/shareSe
 import { resolveEntityCode } from '../services/search/resolveEntityCode';
 import { parseEntityIdFromSegment, pushRecentEntity } from '../services/search/searchHelpers';
 import {
+    buildForeignHostCanonicalUrl,
+    shouldRedirectForeignHostRoot,
+} from '../services/foreignHostCanonical';
+import {
     getSubtreeRefreshVersion,
     subscribeSubtreeRefresh,
 } from '../services/subtreeRefreshBus';
@@ -121,9 +125,16 @@ const HomePage: React.FC = () => {
     const isAuthenticated = Boolean(authentication?.accessToken);
     const userHomeId = authentication?.userId?.trim();
 
-    // Redirect `/`: signed-in users → their home entity; anonymous → public ProtoLink home entity.
+    // Redirect `/`: foreign Host → canonical protolink.ru/{hostname}; else home entity.
     useEffect(() => {
         if (routeSegment !== undefined) {
+            return;
+        }
+        // ADR foreign-domain-unique-code: non-primary Host on `/` → https://protolink.ru/{hostname}{search}.
+        if (shouldRedirectForeignHostRoot(window.location.host, location.pathname)) {
+            window.location.replace(
+                buildForeignHostCanonicalUrl(window.location.host, location.search || '')
+            );
             return;
         }
         const langParam = searchParams.get('lang') ?? DEFAULT_HOME_LANG;
@@ -133,7 +144,15 @@ const HomePage: React.FC = () => {
         } else {
             navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}?${q}`, { replace: true });
         }
-    }, [routeSegment, navigateWithParams, searchParams, isAuthenticated, userHomeId]);
+    }, [
+        routeSegment,
+        navigateWithParams,
+        searchParams,
+        isAuthenticated,
+        userHomeId,
+        location.pathname,
+        location.search,
+    ]);
 
     // When the URL already contains an entity id (e.g. public home id from the logo), never redirect away from it.
 
