@@ -15,6 +15,7 @@ import { useAppSelector } from '../../store/store'
 import {
     avatarKindForSection,
     buildSearchUrl,
+    classifySection,
     flattenIdleRows,
     flattenVisibleRows,
     formatBreadcrumb,
@@ -143,7 +144,6 @@ export const SearchPalette: React.FC = () => {
     const focusedOnce = useRef(false)
     const abortRef = useRef<AbortController | null>(null)
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const listNav = useRef(false)
 
     const buckets = useMemo(() => groupSearchItems(items, query), [items, query])
     const flatRows = useMemo(() => flattenVisibleRows(buckets), [buckets])
@@ -200,7 +200,6 @@ export const SearchPalette: React.FC = () => {
         setErrorText('')
         setRateLimited(false)
         setShowSkeleton(false)
-        listNav.current = false
     }, [])
 
     useEffect(() => {
@@ -346,7 +345,6 @@ export const SearchPalette: React.FC = () => {
     }
 
     const onQueryChange = (next: string) => {
-        listNav.current = false
         setQuery(next)
         // Pattern 6: palette must not write ?q= into history while typing
     }
@@ -366,7 +364,6 @@ export const SearchPalette: React.FC = () => {
         if (key === 'ArrowDown' || key === 'ArrowUp') {
             if (navCount === 0) return
             e.preventDefault()
-            listNav.current = true
             setActiveIndex((prev) => {
                 if (key === 'ArrowDown') return prev < 0 ? 0 : Math.min(navCount - 1, prev + 1)
                 return prev < 0 ? navCount - 1 : Math.max(0, prev - 1)
@@ -478,9 +475,10 @@ export const SearchPalette: React.FC = () => {
                                                 >
                                                     <TypeAvatar
                                                         kind={avatarKindForSection(
-                                                            ent.typeTag
-                                                                ? classifyFromTag(ent.typeTag)
-                                                                : 'other'
+                                                            classifySection(
+                                                                { typeTag: ent.typeTag || '' },
+                                                                ''
+                                                            )
                                                         )}
                                                     />
                                                     <div className="pl-sp-main">
@@ -700,17 +698,6 @@ export const SearchPalette: React.FC = () => {
     )
 
     return createPortal(panel, document.body)
-}
-
-function classifyFromTag(tag: string): string {
-    const t0 = String(tag || '')
-        .trim()
-        .toLowerCase()
-    if (t0 === 'cloudfolder' || t0 === 'cloudroot') return 'folders'
-    if (t0 === 'cloudfile') return 'files'
-    if (t0.indexOf('note') === 0) return 'notes'
-    if (t0 === 'user' || t0 === 'person' || t0.indexOf('user') === 0) return 'people'
-    return 'other'
 }
 
 export default SearchPalette

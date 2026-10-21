@@ -5,6 +5,8 @@ import { Provider } from 'react-redux'
 import { MemoryRouter } from 'react-router-dom'
 import { SearchPalette } from './SearchPalette'
 import { SEARCH_NARROW_PX } from '../../constants/searchPage'
+import { AVATAR_STYLES } from './searchPaletteStyles'
+import { RECENT_ENTITIES_KEY } from '../../services/search/searchHelpers'
 import { createTestStore } from '../../test/createTestStore'
 
 const mockNavigate = vi.fn()
@@ -43,6 +45,7 @@ describe('SearchPalette', () => {
 
     afterEach(() => {
         cleanup()
+        window.localStorage.removeItem(RECENT_ENTITIES_KEY)
     })
 
     it('opens overlay on Ctrl+K when wide', async () => {
@@ -88,5 +91,29 @@ describe('SearchPalette', () => {
         const path = String(mockNavigate.mock.calls[0][0])
         expect(path).toContain('/search')
         expect(path).toContain('q=report')
+    })
+
+    it('recent entity with contact typeTag uses people avatar (shared classifySection)', async () => {
+        window.localStorage.setItem(
+            RECENT_ENTITIES_KEY,
+            JSON.stringify([
+                {
+                    id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                    title: 'Ada Contact',
+                    typeTag: 'contact',
+                },
+            ])
+        )
+        renderPalette()
+        window.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true })
+        )
+        expect(await screen.findByText('Ada Contact')).toBeInTheDocument()
+        const people = AVATAR_STYLES.people
+        const avatars = document.querySelectorAll('.pl-sp-avatar')
+        expect(avatars.length).toBeGreaterThan(0)
+        expect(avatars[0]).toHaveStyle({ background: people.bg })
+        expect(avatars[0].textContent).toBe(people.glyph)
+        window.localStorage.removeItem(RECENT_ENTITIES_KEY)
     })
 })

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+    avatarKindForSection,
     buildSearchUrl,
+    classifySection,
     flattenIdleRows,
     groupSearchItems,
     isSearchHotkey,
@@ -50,6 +52,14 @@ describe('searchHelpers', () => {
             'notes',
             'other',
         ])
+    })
+
+    it('classifies contact typeTag as people (recent-row / idle path)', () => {
+        // Same call shape SearchPalette uses for recent entity avatars (empty query).
+        const section = classifySection({ typeTag: 'contact' }, '')
+        expect(section).toBe('people')
+        expect(avatarKindForSection(section)).toBe('people')
+        expect(classifySection({ typeTag: 'Contact' }, '')).toBe('people')
     })
 
     it('resolves UI states', () => {

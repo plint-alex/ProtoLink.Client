@@ -33,6 +33,19 @@ export type RedeemOutcome =
     | { ok: true; result: RedeemShareLinkResult }
     | { ok: false; unavailable: true }
 
+export type AddToSharedWithMeApiResult = {
+    entityId: string
+    shareLinkId: string
+    canWrite: boolean
+    includeSubtree: boolean
+    alreadyHadGrant: boolean
+}
+
+export type AddToSharedWithMeOutcome =
+    | { ok: true; result: AddToSharedWithMeApiResult }
+    | { ok: false; unavailable: true }
+    | { ok: false; unavailable: false }
+
 type ShareSessionListener = () => void
 const listeners = new Set<ShareSessionListener>()
 
@@ -166,6 +179,52 @@ export async function redeemShareToken(rawToken: string): Promise<RedeemOutcome>
         return { ok: true, result: data }
     } catch {
         return { ok: false, unavailable: true }
+    }
+}
+
+/**
+ * S6 cycle-2: mint a personal Shared-with-me grant from the raw guest-link token.
+ * Must use the signed-in user JWT only — never the share JWT (Api rejects share-only).
+ * Does not go through customAxios (avoids 403→share-JWT fallback).
+ */
+export async function addToSharedWithMe(userAccessToken: string): Promise<AddToSharedWithMeOutcome> {
+    const raw = getShareRawToken()
+    const user = (userAccessToken || '').trim()
+    if (!raw || !user) {
+        return { ok: false, unavailable: false }
+    }
+    try {
+        const response = await axios.post<AddToSharedWithMeApiResult>(
+            '/api/Share/AddToSharedWithMe',
+            { token: raw },
+            {
+                headers: {
+                    Accept: 'application/json',
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${user}`,
+                },
+                validateStatus: (status) => status === 200 || status === 404,
+            }
+        )
+        if (response.status === 404) {
+            return { ok: false, unavailable: true }
+        }
+        const data = response.data
+        if (!data?.entityId) {
+            return { ok: false, unavailable: false }
+        }
+        return {
+            ok: true,
+            result: {
+                entityId: data.entityId,
+                shareLinkId: data.shareLinkId,
+                canWrite: Boolean(data.canWrite),
+                includeSubtree: Boolean(data.includeSubtree),
+                alreadyHadGrant: Boolean(data.alreadyHadGrant),
+            },
+        }
+    } catch {
+        return { ok: false, unavailable: false }
     }
 }
 

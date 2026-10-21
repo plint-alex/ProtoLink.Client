@@ -1,6 +1,18 @@
 import CssBaseline from '@mui/material/CssBaseline';
 import { styled } from '@mui/material/styles';
-import { AppBar, Toolbar, Typography, Button, Box, ButtonBase } from '@mui/material';
+import {
+    AppBar,
+    Toolbar,
+    Typography,
+    Button,
+    Box,
+    ButtonBase,
+    CircularProgress,
+    Snackbar,
+    Alert,
+    Stack,
+} from '@mui/material';
+import LockOutlined from '@mui/icons-material/LockOutlined';
 import { useLocation } from 'react-router-dom';
 import React, { PropsWithChildren, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import UrlLanguageSelector from '../UrlLanguageSelector';
@@ -13,13 +25,19 @@ import { textCatalogService } from '../../services/textCatalogService';
 import { resolveUserAvatarUrl } from '../../services/userAvatarService';
 import { DEFAULT_HOME_LANG, getDynamicHomePath } from '../../constants/home';
 import {
+    addToSharedWithMe,
+    clearShareSession,
     getShareSessionMeta,
     shouldShowGuestBanner,
     subscribeShareSession,
     wasShareCredentialUsed,
     hasShareSession,
+    markShareSessionEnded,
 } from '../../services/shareSession';
+import { bumpSubtreeRefresh } from '../../services/subtreeRefreshBus';
 import { SearchPalette } from '../SearchPalette/SearchPalette';
+import EntityState from '../EntityState';
+import { ROUTES } from '../../resources/routes-constants';
 import {
     fetchAppVersions,
     formatVersionCaption,
@@ -67,6 +85,13 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
     const [appVersions, setAppVersions] = useState<ResolvedAppVersions>(() =>
         resolveAppVersions(null, BUILD_TIME_CLIENT_VERSION)
     );
+    const [addBusy, setAddBusy] = useState(false);
+    const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+        open: false,
+        message: '',
+        severity: 'success',
+    });
+    const [linkUnavailable, setLinkUnavailable] = useState(false);
     const lang = useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
     // Re-render when share sessionStorage changes (redeem / re-redeem / credential used).
     const shareTick = useSyncExternalStore(
@@ -170,16 +195,97 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
         'share-guest-banner': isRu
             ? 'Вы смотрите как гость'
             : "You're viewing as a guest",
+        // UX-AS §5b: signed-in guest visitor (creator name omitted — Redeem does not return it).
         'share-guest-banner-signed-in': isRu
-            ? 'Вы смотрите по гостевой ссылке. Она не появится в «Доступные мне».'
-            : "You're viewing through a guest link. It won't appear in Shared with me.",
+            ? 'Просмотр по гостевой ссылке'
+            : 'Viewing via guest link',
+        'share-guest-banner-helper': isRu
+            ? 'Сессия вкладки не сохранит доступ — добавьте в «Доступные мне».'
+            : "This tab session won't keep it — add it to Shared with me.",
         'share-guest-sign-in': isRu ? 'Войти' : 'Sign in',
+        'share-add-to-shared': isRu
+            ? 'Добавить в «Доступные мне»'
+            : 'Add to Shared with me',
+        'share-add-to-shared-toast': isRu
+            ? 'Добавлено в «Доступные мне»'
+            : 'Added to Shared with me',
+        'share-add-to-shared-error': isRu
+            ? 'Не удалось добавить. Повторите.'
+            : "Couldn't add this. Try again.",
+        'share-link-unavailable': isRu
+            ? 'Ссылка больше не работает'
+            : 'This link no longer works',
+        'share-link-unavailable-body': isRu
+            ? 'Возможно, срок истёк или её отключили. Попросите новую у того, кто её прислал.'
+            : 'It may have expired or been turned off. Ask the person who sent it for a new one.',
+        'share-go-protolink': isRu ? 'На ProtoLink' : 'Go to ProtoLink',
+        'share-details': isRu ? 'Подробности' : 'Details',
     };
     const t = (code: string) => layoutTexts[code] || layoutDefaults[code] || code;
 
     const guestBannerText = isAuthenticated
         ? t('share-guest-banner-signed-in')
         : t('share-guest-banner');
+
+    const handleAddToSharedWithMe = () => {
+        if (addBusy || !isAuthenticated) return;
+        const userToken = authentication?.accessToken;
+        if (!userToken) return;
+        setAddBusy(true);
+        void (async () => {
+            try {
+                const outcome = await addToSharedWithMe(userToken);
+                if (outcome.ok) {
+                    clearShareSession();
+                    bumpSubtreeRefresh();
+                    setToast({
+                        open: true,
+                        message: t('share-add-to-shared-toast'),
+                        severity: 'success',
+                    });
+                    return;
+                }
+                if (outcome.unavailable) {
+                    clearShareSession();
+                    markShareSessionEnded();
+                    setLinkUnavailable(true);
+                    return;
+                }
+                setToast({
+                    open: true,
+                    message: t('share-add-to-shared-error'),
+                    severity: 'error',
+                });
+            } finally {
+                setAddBusy(false);
+            }
+        })();
+    };
+
+    if (linkUnavailable) {
+        const returnUrl = `${location.pathname}${location.search}`;
+        return (
+            <RootDiv>
+                <CssBaseline />
+                <Stack spacing={2} sx={{ p: 3, flexGrow: 1 }}>
+                    <EntityState
+                        icon={<LockOutlined />}
+                        title={t('share-link-unavailable')}
+                        subtitle={t('share-link-unavailable-body')}
+                        action={{
+                            label: t('share-guest-sign-in'),
+                            to: `${ROUTES.LOGIN_ROUTE}?returnurl=${encodeURIComponent(returnUrl)}`,
+                        }}
+                        secondaryAction={{
+                            label: t('share-go-protolink'),
+                            to: ROUTES.HOMEPAGE_ROUTE,
+                        }}
+                        detailsLabel={t('share-details')}
+                    />
+                </Stack>
+            </RootDiv>
+        );
+    }
 
     return (
         <RootDiv>
@@ -371,12 +477,22 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                         minHeight: 36,
                     }}
                 >
-                    <Typography
-                        variant="body2"
-                        sx={{ flexGrow: 1, color: '#5F6368', fontSize: '13px' }}
-                    >
-                        {guestBannerText}
-                    </Typography>
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                        <Typography
+                            variant="body2"
+                            sx={{ color: '#5F6368', fontSize: '13px' }}
+                        >
+                            {guestBannerText}
+                        </Typography>
+                        {isAuthenticated && (
+                            <Typography
+                                variant="caption"
+                                sx={{ color: '#80868B', fontSize: '12px', display: 'block' }}
+                            >
+                                {t('share-guest-banner-helper')}
+                            </Typography>
+                        )}
+                    </Box>
                     {!isAuthenticated && (
                         <Button
                             size="small"
@@ -399,12 +515,50 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                             {t('share-guest-sign-in')}
                         </Button>
                     )}
+                    {isAuthenticated && (
+                        <Button
+                            size="small"
+                            disabled={addBusy}
+                            onClick={handleAddToSharedWithMe}
+                            startIcon={
+                                addBusy ? (
+                                    <CircularProgress size={14} color="inherit" />
+                                ) : undefined
+                            }
+                            sx={{
+                                textTransform: 'none',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                color: '#1A73E8',
+                                minWidth: 'auto',
+                                px: 1,
+                                flexShrink: 0,
+                            }}
+                        >
+                            {t('share-add-to-shared')}
+                        </Button>
+                    )}
                 </Box>
             )}
             <ContentMain>
                 {props.children}
             </ContentMain>
             <SearchPalette />
+            <Snackbar
+                open={toast.open}
+                autoHideDuration={4000}
+                onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+                    severity={toast.severity}
+                    variant="filled"
+                    sx={{ width: '100%' }}
+                >
+                    {toast.message}
+                </Alert>
+            </Snackbar>
         </RootDiv>
     )
 }

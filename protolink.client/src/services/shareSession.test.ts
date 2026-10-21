@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
 import {
+  addToSharedWithMe,
   clearShareSession,
   getShareAccessToken,
   getShareRawToken,
@@ -120,5 +121,98 @@ describe('shareSession', () => {
     markShareCredentialUsed()
     expect(wasShareCredentialUsed()).toBe(true)
     expect(shouldShowGuestBanner(true)).toBe(true)
+  })
+
+  it('addToSharedWithMe posts raw token with user Bearer (UX-AS / S6)', async () => {
+    persistShareSession('guest-raw-token', {
+      accessToken: 'share-jwt',
+      expiresAt: '2026-10-20T12:00:00Z',
+      entityId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      shareLinkId: '11111111-2222-3333-4444-555555555555',
+      includeSubtree: true,
+    })
+
+    vi.mocked(axios.post).mockResolvedValueOnce({
+      status: 200,
+      data: {
+        entityId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        shareLinkId: '11111111-2222-3333-4444-555555555555',
+        canWrite: false,
+        includeSubtree: true,
+        alreadyHadGrant: false,
+      },
+    })
+
+    const outcome = await addToSharedWithMe('user-jwt-abc')
+    expect(outcome.ok).toBe(true)
+    if (outcome.ok) {
+      expect(outcome.result.entityId).toBe('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
+      expect(outcome.result.alreadyHadGrant).toBe(false)
+    }
+    expect(axios.post).toHaveBeenCalledWith(
+      '/api/Share/AddToSharedWithMe',
+      { token: 'guest-raw-token' },
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer user-jwt-abc',
+        }),
+      })
+    )
+  })
+
+  it('addToSharedWithMe treats alreadyHadGrant as success (UX-AS-3)', async () => {
+    persistShareSession('guest-raw-token', {
+      accessToken: 'share-jwt',
+      expiresAt: '2026-10-20T12:00:00Z',
+      entityId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      shareLinkId: '11111111-2222-3333-4444-555555555555',
+      includeSubtree: false,
+    })
+
+    vi.mocked(axios.post).mockResolvedValueOnce({
+      status: 200,
+      data: {
+        entityId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+        shareLinkId: '11111111-2222-3333-4444-555555555555',
+        canWrite: true,
+        includeSubtree: false,
+        alreadyHadGrant: true,
+      },
+    })
+
+    const outcome = await addToSharedWithMe('user-jwt')
+    expect(outcome.ok).toBe(true)
+    if (outcome.ok) expect(outcome.result.alreadyHadGrant).toBe(true)
+  })
+
+  it('addToSharedWithMe maps 404 link_unavailable (UX-AS-4)', async () => {
+    persistShareSession('dead-token', {
+      accessToken: 'share-jwt',
+      expiresAt: '2026-10-20T12:00:00Z',
+      entityId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      shareLinkId: '11111111-2222-3333-4444-555555555555',
+      includeSubtree: true,
+    })
+
+    vi.mocked(axios.post).mockResolvedValueOnce({
+      status: 404,
+      data: { code: 'link_unavailable', message: 'This link no longer works' },
+    })
+
+    const outcome = await addToSharedWithMe('user-jwt')
+    expect(outcome).toEqual({ ok: false, unavailable: true })
+  })
+
+  it('addToSharedWithMe fails quietly without raw token or user JWT', async () => {
+    expect(await addToSharedWithMe('user-jwt')).toEqual({ ok: false, unavailable: false })
+    persistShareSession('raw', {
+      accessToken: 'share-jwt',
+      expiresAt: '2026-10-20T12:00:00Z',
+      entityId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      shareLinkId: '11111111-2222-3333-4444-555555555555',
+      includeSubtree: true,
+    })
+    expect(await addToSharedWithMe('')).toEqual({ ok: false, unavailable: false })
+    expect(axios.post).not.toHaveBeenCalled()
   })
 })
