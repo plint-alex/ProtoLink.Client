@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector, selectEntity } from '../../store/store';
 import { useParams } from 'react-router-dom';
 import { getEntity, updateEntity } from '../../store/actions/thunkActions/entities';
-import { Button, Grid, Paper, TextField, Typography, IconButton, Tooltip, Card, CardContent, Dialog, DialogTitle as MuiDialogTitle, Chip, Stack, Snackbar, Alert } from '@mui/material';
+import { Button, Grid, Paper, TextField, Typography, IconButton, Tooltip, Card, CardContent, Dialog, DialogTitle as MuiDialogTitle, Chip, Stack, Snackbar, Alert, FormControlLabel, Checkbox } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -17,6 +17,7 @@ import { Dictionary } from '../../types/dictionary';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store/store';
 import type { EntitiesStatePart } from '../../store/entitiesSlice';
+import { fetchAuthCapabilities } from '../../services/authCapabilities';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -142,9 +143,11 @@ const EntityComponent: React.FC = () => {
     const { id: entityId } = useParams<{ id: string }>();
     const dispatch = useAppDispatch();
     const entity = useAppSelector((state) => selectEntity(state, entityId));
+    const accessToken = useSelector((state: RootState) => state.authentication?.accessToken || '');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogValue, setDialogValue] = useState('');
     const [currentValueIndex, setCurrentValueIndex] = useState<number>(-1);
+    const [mayClaimUniqueCode, setMayClaimUniqueCode] = useState(false);
     const entities = useSelector((state: RootState) => (state.entities as EntitiesStatePart).entities);
 
     useEffect(() => {
@@ -152,6 +155,29 @@ const EntityComponent: React.FC = () => {
             dispatch(getEntity({ id: entityId }));
         }
     }, [entityId, dispatch]);
+
+    useEffect(() => {
+        let cancelled = false;
+        if (!accessToken) {
+            setMayClaimUniqueCode(false);
+            return;
+        }
+        void (async () => {
+            try {
+                const caps = await fetchAuthCapabilities(accessToken);
+                if (!cancelled) {
+                    setMayClaimUniqueCode(caps.mayClaimUniqueCode);
+                }
+            } catch {
+                if (!cancelled) {
+                    setMayClaimUniqueCode(false);
+                }
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [accessToken]);
 
     const [saveOk, setSaveOk] = useState(false);
     const formik = useFormik({
@@ -161,14 +187,20 @@ const EntityComponent: React.FC = () => {
             mainParentId: entity?.mainParentId || '',
             values: entity?.values || [],
             viewIds: entity?.viewIds || [],
+            codeIsUnique: !!entity?.codeIsUnique,
         },
         onSubmit: (values) => {
             if (entityId) {
+                // Omit defaults to false on the API and would wipe uniqueness — always send an explicit bool.
+                // Claim toggle only when capabilities.mayClaimUniqueCode; otherwise preserve current flag.
+                const codeIsUnique = mayClaimUniqueCode
+                    ? !!values.codeIsUnique
+                    : !!entity?.codeIsUnique;
                 void dispatch(updateEntity({
                     id: entityId,
                     code: values.code,
                     parentIds: values.mainParentId ? [values.mainParentId] : undefined,
-                    codeIsUnique: undefined,
+                    codeIsUnique,
                     order: undefined,
                     hidden: undefined,
                     version: entity?.version,
@@ -237,6 +269,18 @@ const EntityComponent: React.FC = () => {
                                     onChange={formik.handleChange}
                                     margin="normal"
                                 />
+                                {mayClaimUniqueCode ? (
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                name="codeIsUnique"
+                                                checked={!!formik.values.codeIsUnique}
+                                                onChange={formik.handleChange}
+                                            />
+                                        }
+                                        label="Claim memorable URL (unique code)"
+                                    />
+                                ) : null}
                                 <TextField
                                     fullWidth
                                     label="Main Parent ID"
