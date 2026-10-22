@@ -13,6 +13,7 @@ import { filterByLanguage } from './services/filterByLanguage'
 import { urlLanguageService } from './services/urlLanguageService'
 import type { UnknownAction } from '@reduxjs/toolkit'
 import {
+    clearShareSessionIfEntity,
     getShareAccessToken,
     getShareRawToken,
     getShareSessionMeta,
@@ -124,13 +125,15 @@ if (!w.react) {
                     (langCode) => urlLanguageService.getLanguageId(langCode)
                 ),
         },
-        /** Guest-link session helpers for cloud-explorer read-only chrome (share-sheet-ux §5). */
+        /** Guest-link session helpers for cloud-explorer read-only chrome (share-sheet-ux §5 / §7b). */
         shareSession: {
             hasSession: () => Boolean(getShareRawToken()),
             /** True when Authorization used the share JWT (anon guest or signed-in fallback). */
             isGuestMode: () => wasShareCredentialUsed(),
             getRootEntityId: () => getShareSessionMeta()?.entityId ?? null,
             getAccessToken: () => getShareAccessToken(),
+            /** UX-LS-3: clear guest session only when it matches the left share root. */
+            clearIfEntity: (entityId: string) => clearShareSessionIfEntity(entityId),
         },
     };
     

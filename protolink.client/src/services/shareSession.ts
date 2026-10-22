@@ -143,6 +143,19 @@ export function clearShareSession(): void {
     notify()
 }
 
+/**
+ * UX-LS-3: after Leave Shared with me, drop guest-link session only when it is for that root
+ * (stale redeem must not undo Leave). No-op when meta is absent or for a different entity.
+ */
+export function clearShareSessionIfEntity(entityId: string): boolean {
+    const meta = getShareSessionMeta()
+    const target = (entityId || '').replace(/-/g, '').toLowerCase()
+    const current = (meta?.entityId || '').replace(/-/g, '').toLowerCase()
+    if (!target || !current || target !== current) return false
+    clearShareSession()
+    return true
+}
+
 export function updateShareAccessToken(accessToken: string, expiresAt?: string): void {
     const s = storage()
     if (!s) return

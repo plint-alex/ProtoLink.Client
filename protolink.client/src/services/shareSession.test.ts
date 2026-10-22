@@ -3,6 +3,7 @@ import axios from 'axios'
 import {
   addToSharedWithMe,
   clearShareSession,
+  clearShareSessionIfEntity,
   getShareAccessToken,
   getShareRawToken,
   getShareSessionMeta,
@@ -121,6 +122,20 @@ describe('shareSession', () => {
     markShareCredentialUsed()
     expect(wasShareCredentialUsed()).toBe(true)
     expect(shouldShowGuestBanner(true)).toBe(true)
+  })
+
+  it('clearShareSessionIfEntity clears only when meta root matches (UX-LS-3)', () => {
+    persistShareSession('raw', {
+      accessToken: 'jwt',
+      expiresAt: '2026-10-20T12:00:00Z',
+      entityId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      shareLinkId: '11111111-2222-3333-4444-555555555555',
+      includeSubtree: true,
+    })
+    expect(clearShareSessionIfEntity('bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee')).toBe(false)
+    expect(hasShareSession()).toBe(true)
+    expect(clearShareSessionIfEntity('AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE')).toBe(true)
+    expect(hasShareSession()).toBe(false)
   })
 
   it('addToSharedWithMe posts raw token with user Bearer (UX-AS / S6)', async () => {
