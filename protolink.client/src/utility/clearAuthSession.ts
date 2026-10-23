@@ -4,6 +4,11 @@ import { persistor, store } from '../store/store'
 /**
  * Drop signed-in pretence from Redux + redux-persist before any login redirect.
  * Must finish writing persist storage before a full page navigation.
+ *
+ * Do not statically import this module from customAxios — that recreates
+ * store → files/entities thunks → customAxios → clearAuthSession → store
+ * and causes prod TDZ (`Cannot access '$a' before initialization`, blank #root).
+ * customAxios must lazy-import clearAuthAndRedirectToLogin on 401 only.
  */
 export async function clearPersistedAuth(): Promise<void> {
     store.dispatch(setAuthentication(null))

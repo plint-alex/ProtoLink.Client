@@ -1,7 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { getStoredState } from 'redux-persist'
 import { persistConfig } from '../store/persistConfig';
-import type { RootState } from '../store/store';
 import {
     getShareAccessToken,
     getShareRawToken,
@@ -10,7 +9,11 @@ import {
     clearShareSession,
     reRedeemShareSession,
 } from '../services/shareSession'
-import { clearAuthAndRedirectToLogin } from './clearAuthSession'
+
+/** Narrow persist shape — avoid importing store (breaks customAxios ↔ store init cycle). */
+type PersistedAuthState = {
+    authentication?: { accessToken?: string }
+}
 
 const CustomAxios = axios.create()
 
@@ -49,12 +52,14 @@ function pickBearer(userAccessToken: string | undefined, preferShare: boolean): 
 }
 
 async function redirectUserSessionToLogin(): Promise<void> {
-    const state = (await getStoredState(persistConfig)) as RootState | undefined
+    const state = (await getStoredState(persistConfig)) as PersistedAuthState | undefined
     const userToken = (state?.authentication?.accessToken || '').trim()
     // Guest-only share (no user JWT) must not bounce to /login — AT-S8.
     if (!userToken) {
         return
     }
+    // Lazy: static import of clearAuthSession pulled store → files/entities thunks → customAxios (prod TDZ).
+    const { clearAuthAndRedirectToLogin } = await import('./clearAuthSession')
     await clearAuthAndRedirectToLogin()
 }
 
@@ -134,7 +139,7 @@ CustomAxios.interceptors.response.use(
 
 CustomAxios.interceptors.request.use(
     async (config) => {
-        const state = await getStoredState(persistConfig) as RootState
+        const state = (await getStoredState(persistConfig)) as PersistedAuthState | undefined
         const preferShare = Boolean((config as ShareAxiosConfig)._shareFallbackRetried)
         const bearer = pickBearer(state?.authentication?.accessToken, preferShare)
         if (bearer) {
