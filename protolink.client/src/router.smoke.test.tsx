@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 import NotFoundPage from './pages/NotFoundPage'
 import EntityHomeRoute from './components/EntityHomeRoute'
 import { createTestStore } from './test/createTestStore'
@@ -34,7 +35,37 @@ function renderRouter(path: string) {
           <Route path={ROUTES.LOGIN_ROUTE} element={<LoginPage />} />
           <Route path={ROUTES.FORGOT_PASSWORD_ROUTE} element={<ForgotPasswordPage />} />
           <Route path={ROUTES.RESET_PASSWORD_ROUTE} element={<ResetPasswordPage />} />
+          <Route path={ROUTES.CHANGE_PASSWORD_ROUTE} element={<ChangePasswordPage />} />
           <Route path={ROUTES.SHARE_ROUTE} element={<div>Share redeem</div>} />
+          <Route path="/:id/*" element={<EntityHomeRoute />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>
+  )
+}
+
+function renderRouterAuthed(path: string) {
+  return render(
+    <Provider
+      store={createTestStore({
+        authentication: {
+          userId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+          login: 'a@b.c',
+          userName: 'Test',
+          giveinPlaceId: 0,
+          accessToken: 'jwt',
+          refreshToken: 'r',
+          expirationTime: new Date(Date.now() + 3600_000).toISOString(),
+          idleTimeout: 0,
+          errorFields: [],
+          error: '',
+        },
+      })}
+    >
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path={ROUTES.CHANGE_PASSWORD_ROUTE} element={<ChangePasswordPage />} />
           <Route path="/:id/*" element={<EntityHomeRoute />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
@@ -78,6 +109,11 @@ describe('router smoke', () => {
       `${ROUTES.RESET_PASSWORD_ROUTE}?userId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee&token=tok`
     )
     expect(await screen.findByRole('heading', { name: /choose a new password/i })).toBeInTheDocument()
+  })
+
+  it('keeps /change-password off the entity catch-all', async () => {
+    renderRouterAuthed(ROUTES.CHANGE_PASSWORD_ROUTE)
+    expect(await screen.findByRole('heading', { name: /change password/i })).toBeInTheDocument()
   })
 
   it('shows Forgot password link on /login', async () => {

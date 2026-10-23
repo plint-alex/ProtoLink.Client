@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Box, Typography, Menu, MenuItem, Avatar, Divider } from '@mui/material';
 import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
 import { copyText } from '../../services/copyText';
+import { ROUTES } from '../../resources/routes-constants';
 
 interface UserMenuProps {
     userName?: string;
@@ -16,6 +17,7 @@ interface UserMenuProps {
         copyMyId: string;
         copyMyIdHint: string;
         copied: string;
+        changePassword: string;
     };
 }
 
@@ -88,6 +90,11 @@ export const UserMenu: React.FC<UserMenuProps> = ({
     const handleLogout = () => {
         handleClose();
         onLogout();
+    };
+
+    const handleChangePassword = () => {
+        handleClose();
+        navigateWithParams(ROUTES.CHANGE_PASSWORD_ROUTE);
     };
 
     const handleCopyMyId = () => {
@@ -231,9 +238,19 @@ export const UserMenu: React.FC<UserMenuProps> = ({
                     </MenuItem>
                 ) : null}
                 {userName ? (
-                    <MenuItem onClick={handleLogout}>
-                        <Typography sx={{ fontSize: '14px', color: '#202124' }}>{text.logout}</Typography>
-                    </MenuItem>
+                    <>
+                        <MenuItem
+                            onClick={handleChangePassword}
+                            aria-label="ChangePassword"
+                        >
+                            <Typography sx={{ fontSize: '14px', color: '#202124' }}>
+                                {text.changePassword}
+                            </Typography>
+                        </MenuItem>
+                        <MenuItem onClick={handleLogout}>
+                            <Typography sx={{ fontSize: '14px', color: '#202124' }}>{text.logout}</Typography>
+                        </MenuItem>
+                    </>
                 ) : (
                     <MenuItem onClick={handleLogin}>
                         <Typography sx={{ fontSize: '14px', color: '#202124' }}>{text.login}</Typography>

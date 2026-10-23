@@ -192,6 +192,7 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
             ? 'Отправьте это тем, кто хочет дать вам доступ'
             : 'Share this with people who want to give you access',
         'layout-copied': isRu ? 'Скопировано' : 'Copied',
+        'usermenu-change-password': isRu ? 'Сменить пароль' : 'Change password',
         'share-guest-banner': isRu
             ? 'Вы смотрите как гость'
             : "You're viewing as a guest",
@@ -433,6 +434,7 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                                     copyMyId: t('layout-copy-my-id'),
                                     copyMyIdHint: t('layout-copy-my-id-hint'),
                                     copied: t('layout-copied'),
+                                    changePassword: t('usermenu-change-password'),
                                 }}
                             />
                         ) : (

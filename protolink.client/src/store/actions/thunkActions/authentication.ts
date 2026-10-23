@@ -177,3 +177,30 @@ export const resetPassword = createAsyncThunk<
         }
     }
 )
+
+export interface ChangePasswordResult {
+    success: boolean
+    error?: string
+}
+
+export const changePassword = createAsyncThunk<
+    ChangePasswordResult,
+    { currentPassword: string; newPassword: string },
+    { rejectValue: ChangePasswordResult }
+>(
+    'authentication/changePassword',
+    async ({ currentPassword, newPassword }, { rejectWithValue }) => {
+        try {
+            const response = await axios.post<ChangePasswordResult>(
+                `/api/authentication/changePassword`,
+                { currentPassword, newPassword }
+            )
+            return response.data
+        } catch (e: unknown) {
+            if (isAxiosError(e) && e.response?.data) {
+                return rejectWithValue(e.response.data as ChangePasswordResult)
+            }
+            throw e
+        }
+    }
+)

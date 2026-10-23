@@ -12,6 +12,7 @@ import RegisterPage from './pages/RegisterPage'
 import ConfirmEmailPage from './pages/ConfirmEmailPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 import ShareRedeemPage from './pages/ShareRedeemPage'
 
 const RootComponent: React.FC = () => {
@@ -30,6 +31,7 @@ const RootComponent: React.FC = () => {
                         <Route path={ROUTES.CONFIRM_EMAIL_ROUTE} element={<ConfirmEmailPage />} />
                         <Route path={ROUTES.FORGOT_PASSWORD_ROUTE} element={<ForgotPasswordPage />} />
                         <Route path={ROUTES.RESET_PASSWORD_ROUTE} element={<ResetPasswordPage />} />
+                        <Route path={ROUTES.CHANGE_PASSWORD_ROUTE} element={<ChangePasswordPage />} />
                         <Route path={ROUTES.SHARE_ROUTE} element={<ShareRedeemPage />} />
                         {/* C2: /{guid}, /{guid}-{slug}, /{guid}/{anything} — id alone resolves */}
                         <Route path="/:id/*" element={<EntityHomeRoute />} />

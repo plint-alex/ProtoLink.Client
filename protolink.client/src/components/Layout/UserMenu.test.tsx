@@ -16,6 +16,7 @@ const text = {
     copyMyId: 'Copy my ID',
     copyMyIdHint: 'Share this with people who want to give you access',
     copied: 'Copied',
+    changePassword: 'Change password',
 }
 
 describe('UserMenu Copy my ID', () => {
@@ -60,5 +61,24 @@ describe('UserMenu Copy my ID', () => {
 
         await user.click(screen.getByText('IP'))
         expect(screen.queryByLabelText('CopyMyId')).not.toBeInTheDocument()
+    })
+
+    it('shows Change password when signed in', async () => {
+        const user = userEvent.setup()
+
+        render(
+            <MemoryRouter>
+                <UserMenu
+                    userName="Ivan Petrov"
+                    userId="8f3a0000-0000-4000-8000-000000000001"
+                    onLogout={() => undefined}
+                    text={text}
+                />
+            </MemoryRouter>
+        )
+
+        await user.click(screen.getByText('IP'))
+        expect(screen.getByLabelText('ChangePassword')).toBeInTheDocument()
+        expect(screen.getByText('Change password')).toBeInTheDocument()
     })
 })
