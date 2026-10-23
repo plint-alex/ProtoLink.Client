@@ -314,12 +314,9 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
                         onClick={() => {
                             const langParam =
                                 new URLSearchParams(location.search).get('lang') ?? DEFAULT_HOME_LANG;
-                            // AH3: signed-in logo → user home; guest → public product home.
-                            const homePath = getDynamicHomePath(
-                                isAuthenticated ? authentication?.userId : null
-                            );
+                            // AH3: logo always → product home (guest and signed-in).
                             handleNavigation(
-                                `${homePath}?lang=${encodeURIComponent(langParam)}`
+                                `${getDynamicHomePath()}?lang=${encodeURIComponent(langParam)}`
                             );
                         }}
                         sx={{

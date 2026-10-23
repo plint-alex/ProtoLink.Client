@@ -123,9 +123,8 @@ const HomePage: React.FC = () => {
     const currentEntity = useAppSelector((state) => state.entities.currentEntity);
     const mappings = entityId ? (entitiesState.entityViews?.[entityId] ?? EMPTY_MAPPINGS) : EMPTY_MAPPINGS;
     const isAuthenticated = Boolean(authentication?.accessToken);
-    const userHomeId = authentication?.userId?.trim();
 
-    // Redirect `/`: foreign Host → canonical protolink.ru/{hostname}; else home entity.
+    // Redirect `/`: foreign Host → canonical protolink.ru/{hostname}; else product home (AH2).
     useEffect(() => {
         if (routeSegment !== undefined) {
             return;
@@ -139,17 +138,11 @@ const HomePage: React.FC = () => {
         }
         const langParam = searchParams.get('lang') ?? DEFAULT_HOME_LANG;
         const q = `lang=${encodeURIComponent(langParam)}`;
-        if (isAuthenticated && userHomeId) {
-            navigateWithParams(`/${userHomeId}?${q}`, { replace: true });
-        } else {
-            navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}?${q}`, { replace: true });
-        }
+        navigateWithParams(`/${DEFAULT_HOME_ENTITY_ID}?${q}`, { replace: true });
     }, [
         routeSegment,
         navigateWithParams,
         searchParams,
-        isAuthenticated,
-        userHomeId,
         location.pathname,
         location.search,
     ]);
