@@ -5,7 +5,8 @@ import { useLocation, useParams } from 'react-router-dom'
 import EntityState from '../components/EntityState'
 import { useDelayedFlag } from '../hooks/useDelayedFlag'
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams'
-import { ROUTES } from '../resources/routes-constants'
+import { ROUTES, SYSTEM_PAGE_CODES } from '../resources/routes-constants'
+import { textCatalogService } from '../services/textCatalogService'
 import {
   clearShareSession,
   markShareSessionEnded,
@@ -15,25 +16,16 @@ import {
 
 const LOADING_DELAY_MS = 300
 
-const COPY_EN = {
-  opening: 'Opening shared item…',
-  title: 'This link no longer works',
-  subtitle:
+/** EN-only offline fallback; RU/EN product copy comes from Api catalog. */
+const SHARE_REDEEM_DEFAULTS_EN: Record<string, string> = {
+  'share-redeem-opening': 'Opening shared item…',
+  'share-redeem-title': 'This link no longer works',
+  'share-redeem-subtitle':
     'It may have expired or been turned off. Ask the person who sent it for a new one.',
-  signIn: 'Sign in',
-  goHome: 'Go to ProtoLink',
-  details: 'Details',
-} as const
-
-const COPY_RU = {
-  opening: 'Открываем общий элемент…',
-  title: 'Ссылка больше не работает',
-  subtitle:
-    'Возможно, срок истёк или её отключили. Попросите новую у того, кто её прислал.',
-  signIn: 'Войти',
-  goHome: 'На ProtoLink',
-  details: 'Подробности',
-} as const
+  'share-redeem-sign-in': 'Sign in',
+  'share-redeem-go-home': 'Go to ProtoLink',
+  'share-redeem-details': 'Details',
+}
 
 type Status = 'loading' | 'unavailable'
 
@@ -51,12 +43,37 @@ const ShareRedeemPage: React.FC = () => {
     () => new URLSearchParams(location.search).get('lang') || 'en-US',
     [location.search]
   )
-  const isRu = lang.toLowerCase().startsWith('ru')
-  const copy = isRu ? COPY_RU : COPY_EN
+  const [texts, setTexts] = useState<Record<string, string>>({})
+  const t = React.useCallback(
+    (code: string) => texts[code] || SHARE_REDEEM_DEFAULTS_EN[code] || code,
+    [texts]
+  )
 
   const token = (routeToken || '').trim()
   const [status, setStatus] = useState<Status>(token ? 'loading' : 'unavailable')
   const showSpinner = useDelayedFlag(status === 'loading', LOADING_DELAY_MS)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const loadedTexts = await textCatalogService.loadPageTexts({
+          lang,
+          systemPageCode: SYSTEM_PAGE_CODES.SHARE_REDEEM,
+          pathname: location.pathname,
+        })
+        if (!cancelled) {
+          setTexts((prev) => ({ ...prev, ...loadedTexts }))
+        }
+      } catch (error) {
+        console.error('[ShareRedeemPage] failed to load page texts', error)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [lang, location.pathname])
 
   useEffect(() => {
     if (!token) {
@@ -91,17 +108,17 @@ const ShareRedeemPage: React.FC = () => {
     return (
       <EntityState
         icon={<LockOutlined />}
-        title={copy.title}
-        subtitle={copy.subtitle}
+        title={t('share-redeem-title')}
+        subtitle={t('share-redeem-subtitle')}
         action={{
-          label: copy.signIn,
+          label: t('share-redeem-sign-in'),
           to: `${ROUTES.LOGIN_ROUTE}?returnurl=${encodeURIComponent(returnUrl)}`,
         }}
         secondaryAction={{
-          label: copy.goHome,
+          label: t('share-redeem-go-home'),
           to: ROUTES.HOMEPAGE_ROUTE,
         }}
-        detailsLabel={copy.details}
+        detailsLabel={t('share-redeem-details')}
         // Intentionally omit details — never surface token / HTTP / GUID (AT-S27).
       />
     )
@@ -113,7 +130,7 @@ const ShareRedeemPage: React.FC = () => {
         <>
           <CircularProgress size={32} />
           <Typography variant="body1" color="text.secondary">
-            {copy.opening}
+            {t('share-redeem-opening')}
           </Typography>
         </>
       )}

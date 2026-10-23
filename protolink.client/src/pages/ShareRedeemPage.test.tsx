@@ -2,8 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import ShareRedeemPage from './ShareRedeemPage'
-import { ROUTES } from '../resources/routes-constants'
+import { ROUTES, SYSTEM_PAGE_CODES } from '../resources/routes-constants'
+import { textCatalogService } from '../services/textCatalogService'
 import * as shareSession from '../services/shareSession'
+
+vi.mock('../services/textCatalogService', () => ({
+  textCatalogService: {
+    loadPageTexts: vi.fn().mockResolvedValue({}),
+  },
+}))
 
 vi.mock('../services/shareSession', async () => {
   const actual = await vi.importActual<typeof import('../services/shareSession')>(
@@ -20,6 +27,10 @@ vi.mock('../hooks/useNavigationWithParams', () => ({
 }))
 
 const mockNavigate = vi.fn()
+
+const SHARE_RU: Record<string, string> = {
+  'share-redeem-title': 'Ссылка больше не работает',
+}
 
 function renderShare(path: string) {
   return render(
@@ -39,6 +50,8 @@ describe('ShareRedeemPage', () => {
     sessionStorage.clear()
     mockNavigate.mockReset()
     vi.mocked(shareSession.redeemShareToken).mockReset()
+    vi.mocked(textCatalogService.loadPageTexts).mockReset()
+    vi.mocked(textCatalogService.loadPageTexts).mockResolvedValue({})
   })
 
   afterEach(() => {
@@ -71,6 +84,12 @@ describe('ShareRedeemPage', () => {
     expect(shareSession.getShareRawToken()).toBe('secret-token-value')
     expect(shareSession.getShareAccessToken()).toBe('share-jwt')
     expect(screen.queryByText(/this link no longer works/i)).not.toBeInTheDocument()
+    expect(textCatalogService.loadPageTexts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPageCode: SYSTEM_PAGE_CODES.SHARE_REDEEM,
+        pathname: '/share/secret-token-value',
+      })
+    )
   })
 
   it('shows product link-unavailable wording without token/HTTP (AT-S27)', async () => {
@@ -92,14 +111,21 @@ describe('ShareRedeemPage', () => {
     expect(mockNavigate).not.toHaveBeenCalled()
   })
 
-  it('shows RU copy when lang=ru-RU', async () => {
+  it('shows RU copy from catalog when lang=ru-RU', async () => {
     vi.mocked(shareSession.redeemShareToken).mockResolvedValueOnce({
       ok: false,
       unavailable: true,
     })
+    vi.mocked(textCatalogService.loadPageTexts).mockResolvedValue(SHARE_RU)
 
     renderShare('/share/x?lang=ru-RU')
 
     expect(await screen.findByText(/ссылка больше не работает/i)).toBeInTheDocument()
+    expect(textCatalogService.loadPageTexts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lang: 'ru-RU',
+        systemPageCode: SYSTEM_PAGE_CODES.SHARE_REDEEM,
+      })
+    )
   })
 })

@@ -10,10 +10,12 @@ import {
 } from '@mui/material'
 import { styled } from '@mui/material/styles'
 import { useNavigationWithParams } from '../hooks/useNavigationWithParams'
-import { ROUTES } from '../resources/routes-constants'
+import { ROUTES, SYSTEM_PAGE_CODES } from '../resources/routes-constants'
 import { useAppDispatch } from '../store/store'
 import { confirmEmail } from '../store/actions/thunkActions/authentication'
+import { textCatalogService } from '../services/textCatalogService'
 
+/** EN-only offline fallback; RU/EN product copy comes from Api catalog. */
 const CONFIRM_DEFAULTS_EN: Record<string, string> = {
   'confirm-email-title': 'Confirm email',
   'confirm-email-loading': 'Confirming your email…',
@@ -22,20 +24,6 @@ const CONFIRM_DEFAULTS_EN: Record<string, string> = {
   'confirm-email-missing-params': 'This confirmation link is incomplete. Use the link from your email.',
   'confirm-email-go-login': 'Sign in',
   'confirm-email-back-home': 'Back to home',
-}
-
-const CONFIRM_DEFAULTS_RU: Record<string, string> = {
-  'confirm-email-title': 'Подтверждение email',
-  'confirm-email-loading': 'Подтверждаем email…',
-  'confirm-email-success': 'Email подтверждён. Можно войти.',
-  'confirm-email-error': 'Не удалось подтвердить ссылку. Она недействительна или уже использована.',
-  'confirm-email-missing-params': 'В ссылке не хватает данных. Откройте её из письма.',
-  'confirm-email-go-login': 'Войти',
-  'confirm-email-back-home': 'На главную',
-}
-
-function defaultsForLang(lang: string): Record<string, string> {
-  return lang.toLowerCase().startsWith('ru') ? CONFIRM_DEFAULTS_RU : CONFIRM_DEFAULTS_EN
 }
 
 const PageContainer = styled(Container)(({ theme }) => ({
@@ -68,8 +56,11 @@ const ConfirmEmailPage: React.FC = () => {
     () => new URLSearchParams(location.search).get('lang') || 'en-US',
     [location.search]
   )
-  const defaults = useMemo(() => defaultsForLang(lang), [lang])
-  const t = (code: string) => defaults[code] || code
+  const [texts, setTexts] = useState<Record<string, string>>({})
+  const t = React.useCallback(
+    (code: string) => texts[code] || CONFIRM_DEFAULTS_EN[code] || code,
+    [texts]
+  )
 
   const { userId, token } = useMemo(() => {
     const params = new URLSearchParams(location.search)
@@ -82,6 +73,28 @@ const ConfirmEmailPage: React.FC = () => {
   const [status, setStatus] = useState<Status>(
     userId && token ? 'loading' : 'missing'
   )
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const loadedTexts = await textCatalogService.loadPageTexts({
+          lang,
+          systemPageCode: SYSTEM_PAGE_CODES.CONFIRM_EMAIL,
+          pathname: location.pathname,
+        })
+        if (!cancelled) {
+          setTexts((prev) => ({ ...prev, ...loadedTexts }))
+        }
+      } catch (error) {
+        console.error('[ConfirmEmailPage] failed to load page texts', error)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [lang, location.pathname])
 
   useEffect(() => {
     if (!userId || !token) {

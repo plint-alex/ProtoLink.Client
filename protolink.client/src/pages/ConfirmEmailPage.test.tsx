@@ -4,8 +4,15 @@ import { Provider } from 'react-redux'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import ConfirmEmailPage from './ConfirmEmailPage'
 import { createTestStore } from '../test/createTestStore'
-import { ROUTES } from '../resources/routes-constants'
+import { ROUTES, SYSTEM_PAGE_CODES } from '../resources/routes-constants'
 import axios from '../utility/customAxios'
+import { textCatalogService } from '../services/textCatalogService'
+
+vi.mock('../services/textCatalogService', () => ({
+  textCatalogService: {
+    loadPageTexts: vi.fn().mockResolvedValue({}),
+  },
+}))
 
 vi.mock('../utility/customAxios', () => ({
   default: {
@@ -13,6 +20,11 @@ vi.mock('../utility/customAxios', () => ({
     post: vi.fn(),
   },
 }))
+
+const CONFIRM_RU: Record<string, string> = {
+  'confirm-email-title': 'Подтверждение email',
+  'confirm-email-success': 'Email подтверждён. Можно войти.',
+}
 
 function renderConfirm(path: string) {
   const store = createTestStore()
@@ -35,6 +47,8 @@ function renderConfirm(path: string) {
 describe('ConfirmEmailPage', () => {
   beforeEach(() => {
     vi.mocked(axios.get).mockReset()
+    vi.mocked(textCatalogService.loadPageTexts).mockReset()
+    vi.mocked(textCatalogService.loadPageTexts).mockResolvedValue({})
   })
 
   it('confirms via API and shows success (EN)', async () => {
@@ -54,6 +68,12 @@ describe('ConfirmEmailPage', () => {
         '/api/authentication/confirmEmail/6aa1765a-1111-2222-3333-444444444444/871d221c-aaaa-bbbb-cccc-dddddddddddd'
       )
     })
+    expect(textCatalogService.loadPageTexts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPageCode: SYSTEM_PAGE_CODES.CONFIRM_EMAIL,
+        pathname: ROUTES.CONFIRM_EMAIL_ROUTE,
+      })
+    )
   })
 
   it('shows clear error when API returns ok:false', async () => {
@@ -73,8 +93,9 @@ describe('ConfirmEmailPage', () => {
     expect(axios.get).not.toHaveBeenCalled()
   })
 
-  it('shows RU copy when lang=ru-RU', async () => {
+  it('shows RU copy from catalog when lang=ru-RU', async () => {
     vi.mocked(axios.get).mockResolvedValueOnce({ data: { ok: true } })
+    vi.mocked(textCatalogService.loadPageTexts).mockResolvedValue(CONFIRM_RU)
 
     renderConfirm(
       `${ROUTES.CONFIRM_EMAIL_ROUTE}?userId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee&token=tok&lang=ru-RU`
@@ -82,5 +103,11 @@ describe('ConfirmEmailPage', () => {
 
     expect(await screen.findByRole('heading', { name: /подтверждение email/i })).toBeInTheDocument()
     expect(await screen.findByText(/email подтверждён/i)).toBeInTheDocument()
+    expect(textCatalogService.loadPageTexts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lang: 'ru-RU',
+        systemPageCode: SYSTEM_PAGE_CODES.CONFIRM_EMAIL,
+      })
+    )
   })
 })

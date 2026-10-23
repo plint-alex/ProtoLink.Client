@@ -77,6 +77,10 @@ class TextCatalogService {
         if (pathname === ROUTES.HOMEPAGE_ROUTE) return SYSTEM_PAGE_CODES.HOME_ROOT
         if (pathname === ROUTES.LOGIN_ROUTE) return SYSTEM_PAGE_CODES.LOGIN
         if (pathname === ROUTES.REGISTER_ROUTE) return SYSTEM_PAGE_CODES.REGISTER
+        if (pathname === ROUTES.CONFIRM_EMAIL_ROUTE) return SYSTEM_PAGE_CODES.CONFIRM_EMAIL
+        if (pathname === '/share' || pathname.startsWith('/share/')) {
+            return SYSTEM_PAGE_CODES.SHARE_REDEEM
+        }
         if (pathname === ROUTES.EXPLORER_ROUTE) return SYSTEM_PAGE_CODES.EXPLORER_ROOT
         if (pathname === ROUTES.TEST_ROUTE) return SYSTEM_PAGE_CODES.TEST
         return null
