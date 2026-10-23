@@ -10,6 +10,7 @@ import {
     clearShareSession,
     reRedeemShareSession,
 } from '../services/shareSession'
+import { clearAuthAndRedirectToLogin } from './clearAuthSession'
 
 const CustomAxios = axios.create()
 
@@ -26,14 +27,6 @@ const isTextRequest = (config?: { headers?: Record<string, unknown> }): boolean 
         headers?.['X-ProtoLink-Text-Request'] ??
         headers?.['x-protolink-text-request']
     return headerValue === '1' || headerValue === 1 || headerValue === true
-}
-
-function redirectToLogin(): void {
-    const currentUrl = new URL(window.location.href)
-    const lang = currentUrl.searchParams.get('lang') || 'en-US'
-    const returnPath = currentUrl.pathname
-    const returnUrl = lang ? `${returnPath}?lang=${lang}` : returnPath
-    window.location.href = `/login?logout&returnurl=${encodeURIComponent(returnUrl)}`
 }
 
 /**
@@ -53,6 +46,16 @@ function pickBearer(userAccessToken: string | undefined, preferShare: boolean): 
         return shareJwt
     }
     return null
+}
+
+async function redirectUserSessionToLogin(): Promise<void> {
+    const state = (await getStoredState(persistConfig)) as RootState | undefined
+    const userToken = (state?.authentication?.accessToken || '').trim()
+    // Guest-only share (no user JWT) must not bounce to /login — AT-S8.
+    if (!userToken) {
+        return
+    }
+    await clearAuthAndRedirectToLogin()
 }
 
 CustomAxios.interceptors.response.use(
@@ -84,24 +87,27 @@ CustomAxios.interceptors.response.use(
 
         // AT-S8: share JWT expired → silent re-redeem from sessionStorage; never bounce guest to /login.
         if (status === 401 && config && getShareRawToken()) {
-            if (config._shareRetried) {
+            if (!config._shareRetried) {
+                const refreshed = await reRedeemShareSession()
+                if (refreshed) {
+                    const shareJwt = getShareAccessToken()
+                    if (shareJwt) {
+                        config._shareRetried = true
+                        markShareCredentialUsed()
+                        config.headers = config.headers ?? {}
+                        config.headers.Authorization = `Bearer ${shareJwt}`
+                        return CustomAxios.request(config)
+                    }
+                }
                 clearShareSession()
                 markShareSessionEnded()
-                return Promise.reject(error)
+            } else {
+                clearShareSession()
+                markShareSessionEnded()
             }
-            const refreshed = await reRedeemShareSession()
-            if (!refreshed) {
-                return Promise.reject(error)
-            }
-            const shareJwt = getShareAccessToken()
-            if (!shareJwt) {
-                return Promise.reject(error)
-            }
-            config._shareRetried = true
-            markShareCredentialUsed()
-            config.headers = config.headers ?? {}
-            config.headers.Authorization = `Bearer ${shareJwt}`
-            return CustomAxios.request(config)
+            // Share path exhausted — if a user JWT pretends signed-in, clear + login; else reject.
+            await redirectUserSessionToLogin()
+            return Promise.reject(error)
         }
 
         // Signed-in without personal grant: user JWT → 403, retry once with share JWT (S4 fallback).
@@ -118,9 +124,8 @@ CustomAxios.interceptors.response.use(
         }
 
         if (status === 401) {
-            // No share session — existing signed-in behaviour.
-            redirectToLogin()
-            return
+            await redirectUserSessionToLogin()
+            return Promise.reject(error)
         }
 
         return Promise.reject(error)

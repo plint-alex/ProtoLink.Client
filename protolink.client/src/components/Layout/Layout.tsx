@@ -25,6 +25,10 @@ import { textCatalogService } from '../../services/textCatalogService';
 import { resolveUserAvatarUrl } from '../../services/userAvatarService';
 import { DEFAULT_HOME_LANG, getDynamicHomePath } from '../../constants/home';
 import {
+    clearAuthAndRedirectToLogin,
+    isUserAccessExpired,
+} from '../../utility/clearAuthSession';
+import {
     addToSharedWithMe,
     clearShareSession,
     getShareSessionMeta,
@@ -118,6 +122,13 @@ export const Layout: React.FC<PropsWithChildren<FooProps>> = (props) => {
             cancelled = true;
         };
     }, [isAuthenticated, authentication?.userId, location.pathname]);
+
+    // Proactive: expired persisted JWT must not keep signed-in chrome with no API call.
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        if (!isUserAccessExpired(authentication?.expirationTime)) return;
+        void clearAuthAndRedirectToLogin();
+    }, [isAuthenticated, authentication?.expirationTime]);
 
     const handleNavigation = (path: string) => {
         navigateWithParams(path);

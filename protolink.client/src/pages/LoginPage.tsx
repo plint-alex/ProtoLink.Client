@@ -20,6 +20,7 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { textCatalogService } from '../services/textCatalogService';
+import { clearPersistedAuth } from '../utility/clearAuthSession';
 
 const LOGIN_DEFAULTS_EN: Record<string, string> = {
     'login-title': 'Sign in',
@@ -118,18 +119,25 @@ const LoginPage: React.FC = () => {
     } = useForm<LoginFormData>({ resolver: yupResolver(schema) });
 
     useEffect(() => {
-        // Temporarily disabled to test routing
-        // const queryString = new URLSearchParams(localLocation.search)
-        // const logout = queryString.get('logout')
-        // queryString.delete('logout');
-        // const returnurl = queryString.get('returnurl') 
-        // if (authData.accessToken && logout === null) {
-        //     if (returnurl)
-        //         location.href = returnurl;
-        //     else
-        //         navigate(ROUTES.HOMEPAGE_ROUTE);
-        // }
-    }, [authData, navigateWithParams]);
+        const queryString = new URLSearchParams(location.search)
+        const logoutFlag = queryString.has('logout')
+        if (logoutFlag && authData?.accessToken) {
+            // ?logout must clear persist so Layout does not keep UserMenu chrome.
+            void clearPersistedAuth()
+            return
+        }
+        if (authData?.accessToken && !logoutFlag) {
+            const returnurl = queryString.get('returnurl')
+            const isSameOriginPath =
+                !!returnurl && returnurl.startsWith('/') && !/^\/[/\\]/.test(returnurl)
+            if (isSameOriginPath) {
+                navigateWithParams(returnurl!, {
+                    params: { logout: null, returnurl: null },
+                    replace: true,
+                })
+            }
+        }
+    }, [authData?.accessToken, location.search, navigateWithParams]);
 
     useEffect(() => {
         let cancelled = false;
