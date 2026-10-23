@@ -3,6 +3,8 @@ export const ROUTES = {
     LOGIN_ROUTE: '/login',
     REGISTER_ROUTE: '/register',
     CONFIRM_EMAIL_ROUTE: '/confirm-email',
+    FORGOT_PASSWORD_ROUTE: '/forgot-password',
+    RESET_PASSWORD_ROUTE: '/reset-password',
     /** Guest-link entry: /share/{token} — redeem then replace to /{entityId} (AT-S4). */
     SHARE_ROUTE: '/share/:token',
     EXPLORER_ROUTE: '/explorer',

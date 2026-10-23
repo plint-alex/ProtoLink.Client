@@ -132,3 +132,48 @@ export const confirmEmail = createAsyncThunk<boolean, { userId: string; token: s
         }
     }
 )
+
+export interface ForgotPasswordResult {
+    success: boolean
+}
+
+export const forgotPassword = createAsyncThunk<
+    ForgotPasswordResult,
+    { email: string; lang: string }
+>(
+    'authentication/forgotPassword',
+    async ({ email, lang }) => {
+        const response = await axios.post<ForgotPasswordResult>(
+            `/api/authentication/forgotPassword?lang=${encodeURIComponent(lang)}`,
+            { email }
+        )
+        return response.data
+    }
+)
+
+export interface ResetPasswordResult {
+    success: boolean
+    error?: string
+}
+
+export const resetPassword = createAsyncThunk<
+    ResetPasswordResult,
+    { userId: string; token: string; newPassword: string },
+    { rejectValue: ResetPasswordResult }
+>(
+    'authentication/resetPassword',
+    async ({ userId, token, newPassword }, { rejectWithValue }) => {
+        try {
+            const response = await axios.post<ResetPasswordResult>(
+                `/api/authentication/resetPassword`,
+                { userId, token, newPassword }
+            )
+            return response.data
+        } catch (e: unknown) {
+            if (isAxiosError(e) && e.response?.data) {
+                return rejectWithValue(e.response.data as ResetPasswordResult)
+            }
+            throw e
+        }
+    }
+)

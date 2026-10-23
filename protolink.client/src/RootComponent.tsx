@@ -10,6 +10,8 @@ import AdminPage from './pages/AdminPage/AdminPage'
 import TestPage from './pages/TestPage'
 import RegisterPage from './pages/RegisterPage'
 import ConfirmEmailPage from './pages/ConfirmEmailPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import ShareRedeemPage from './pages/ShareRedeemPage'
 
 const RootComponent: React.FC = () => {
@@ -24,8 +26,10 @@ const RootComponent: React.FC = () => {
                         <Route path={ROUTES.EXPLORER_ROUTE + '/:id'} element={<AdminPage />} />
                         <Route path={ROUTES.LOGIN_ROUTE} element={<LoginPage />} />
                         <Route path={ROUTES.REGISTER_ROUTE} element={<RegisterPage />} />
-                        {/* Public: must be before /:id so confirm-email / share are not treated as entities */}
+                        {/* Public: must be before /:id so auth helpers / share are not treated as entities */}
                         <Route path={ROUTES.CONFIRM_EMAIL_ROUTE} element={<ConfirmEmailPage />} />
+                        <Route path={ROUTES.FORGOT_PASSWORD_ROUTE} element={<ForgotPasswordPage />} />
+                        <Route path={ROUTES.RESET_PASSWORD_ROUTE} element={<ResetPasswordPage />} />
                         <Route path={ROUTES.SHARE_ROUTE} element={<ShareRedeemPage />} />
                         {/* C2: /{guid}, /{guid}-{slug}, /{guid}/{anything} — id alone resolves */}
                         <Route path="/:id/*" element={<EntityHomeRoute />} />

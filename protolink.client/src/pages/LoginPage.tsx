@@ -27,6 +27,7 @@ const LOGIN_DEFAULTS_EN: Record<string, string> = {
     'login-field-password': 'Password',
     'login-submit': 'Sign in',
     'login-register': 'Create account',
+    'login-forgot-password': 'Forgot password?',
     'login-back-home': 'Back to home',
     'login-validation-login-required': 'Login is required',
     'login-validation-password-required': 'Password is required',
@@ -35,6 +36,26 @@ const LOGIN_DEFAULTS_EN: Record<string, string> = {
     'login-error-check-credentials': 'Check your login and password',
     'login-error-network': 'Network error during sign-in',
 };
+
+const LOGIN_DEFAULTS_RU: Record<string, string> = {
+    'login-title': 'Вход',
+    'login-field-login': 'Логин',
+    'login-field-password': 'Пароль',
+    'login-submit': 'Войти',
+    'login-register': 'Создать аккаунт',
+    'login-forgot-password': 'Забыли пароль?',
+    'login-back-home': 'На главную',
+    'login-validation-login-required': 'Логин обязателен',
+    'login-validation-password-required': 'Пароль обязателен',
+    'login-error-generic': 'Не удалось войти',
+    'login-error-failed': 'Не удалось войти',
+    'login-error-check-credentials': 'Проверьте логин и пароль',
+    'login-error-network': 'Сетевая ошибка при входе',
+};
+
+function loginDefaultsForLang(lang: string): Record<string, string> {
+    return lang.toLowerCase().startsWith('ru') ? LOGIN_DEFAULTS_RU : LOGIN_DEFAULTS_EN
+}
 
 const LoginContainer = styled(Container)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -73,10 +94,11 @@ const LoginPage: React.FC = () => {
     const dispatch = useAppDispatch();
     const authData = useAppSelector((state) => state.authentication);
     const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
+    const langDefaults = React.useMemo(() => loginDefaultsForLang(lang), [lang]);
     const [texts, setTexts] = React.useState<Record<string, string>>({});
     const t = React.useCallback(
-        (code: string) => texts[code] || LOGIN_DEFAULTS_EN[code] || code,
-        [texts]
+        (code: string) => texts[code] || langDefaults[code] || code,
+        [texts, langDefaults]
     );
 
     const schema = React.useMemo(
@@ -250,6 +272,17 @@ const LoginPage: React.FC = () => {
                         helperText={errors.password?.message}
                         {...register('password')}
                     />
+
+                    <Button
+                        variant="text"
+                        color="primary"
+                        fullWidth
+                        sx={{ mt: 1 }}
+                        onClick={() => navigateWithParams(ROUTES.FORGOT_PASSWORD_ROUTE)}
+                        disabled={isSubmitting}
+                    >
+                        {t('login-forgot-password')}
+                    </Button>
 
                     <SubmitButton
                         type="submit"
