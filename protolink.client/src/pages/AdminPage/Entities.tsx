@@ -11,7 +11,10 @@ import { selectEntities, useAppDispatch, useAppSelector } from '../../store/stor
 import { getEntities, deleteEntity, addParent, addEntityAndSelect } from '../../store/actions/thunkActions/entities';
 import type { Entity } from '../../types/entities';
 import { copyText } from '../../services/copyText';
-import { textCatalogService } from '../../services/textCatalogService';
+import {
+    resolveExplorerChromeLabel,
+    textCatalogService,
+} from '../../services/textCatalogService';
 import { SYSTEM_PAGE_CODES } from '../../resources/routes-constants';
 import { explorerEntityLabel } from './explorerEntityLabel';
 
@@ -61,7 +64,11 @@ const Entities: React.FC = () => {
     const [parentIdToAdd, setParentIdToAdd] = React.useState<string>('');
     const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
     const [texts, setTexts] = React.useState<Record<string, string>>({});
-    const t = React.useCallback((code: string) => texts[code] || code, [texts]);
+    // Catalog kids under sys-page-explorer-root may be empty on prod — EN defaults, not raw codes.
+    const t = React.useCallback(
+        (code: string) => resolveExplorerChromeLabel(code, texts),
+        [texts]
+    );
 
     const children = useAppSelector((state) => selectEntities(state, 'children'));
     const parents = useAppSelector((state) => selectEntities(state, 'parents'));

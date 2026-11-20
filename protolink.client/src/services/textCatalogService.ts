@@ -66,6 +66,48 @@ export const TOP_MENU_DEFAULTS_EN: Record<(typeof TOP_MENU_TEXT_CODES)[number], 
     'home-details': 'Details',
 }
 
+/** Admin Explorer chrome codes under sys-page-explorer-root (may be missing in prod). */
+export const EXPLORER_CHROME_TEXT_CODES = [
+    'explorer-parents',
+    'explorer-children',
+    'explorer-parent-id-to-add',
+    'explorer-add-parent',
+    'explorer-go-to-root',
+    'explorer-add-entity',
+    'explorer-copy',
+    'explorer-remove-entity',
+    'explorer-loading',
+] as const
+
+/** EN defaults when sys-page-explorer-root has no text kids (or values unresolved). */
+export const EXPLORER_CHROME_DEFAULTS_EN: Record<(typeof EXPLORER_CHROME_TEXT_CODES)[number], string> = {
+    'explorer-parents': 'Parents',
+    'explorer-children': 'Children',
+    'explorer-parent-id-to-add': 'Parent id to add',
+    'explorer-add-parent': 'Add parent',
+    'explorer-go-to-root': 'Go to root',
+    'explorer-add-entity': 'Add entity',
+    'explorer-copy': 'Copy',
+    'explorer-remove-entity': 'Remove',
+    'explorer-loading': 'Loading…',
+}
+
+/**
+ * Resolve Explorer chrome label: catalog value wins when it is a real label
+ * (not empty and not the raw code). Otherwise EN default, then code.
+ */
+export function resolveExplorerChromeLabel(
+    code: string,
+    texts: Record<string, string>
+): string {
+    const fromCatalog = texts[code]
+    if (fromCatalog && fromCatalog !== code) {
+        return fromCatalog
+    }
+    const defaults = EXPLORER_CHROME_DEFAULTS_EN as Record<string, string>
+    return defaults[code] || code
+}
+
 class TextCatalogService {
     private systemPageEntityIdByCode: Record<string, string> = {}
     private inFlightSystemPageByCode: Record<string, Promise<string | null> | undefined> = {}
