@@ -13,6 +13,7 @@ import type { Entity } from '../../types/entities';
 import { copyText } from '../../services/copyText';
 import { textCatalogService } from '../../services/textCatalogService';
 import { SYSTEM_PAGE_CODES } from '../../resources/routes-constants';
+import { explorerEntityLabel } from './explorerEntityLabel';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -119,9 +120,10 @@ const Entities: React.FC = () => {
         let cancelled = false;
         void (async () => {
             try {
+                // Never pass explored entity as routeEntityId — chrome texts live under
+                // sys-page-explorer-root (22f9f37a…), not under the open graph entity.
                 const loadedTexts = await textCatalogService.loadPageTexts({
                     lang,
-                    routeEntityId: id ?? null,
                     systemPageCode: SYSTEM_PAGE_CODES.EXPLORER_ROOT,
                     pathname: location.pathname,
                 });
@@ -136,7 +138,7 @@ const Entities: React.FC = () => {
         return () => {
             cancelled = true;
         };
-    }, [id, lang, location.pathname]);
+    }, [lang, location.pathname]);
 
     return (
         <Grid container spacing={3}>
@@ -170,25 +172,23 @@ const Entities: React.FC = () => {
                                     </Tooltip>
                                 </td>
                             </tr>
-                            {(!parents || !parents[0]) && (
-                                <tr>
-                                    <td colSpan={2}>
-                                        <Button
-                                            type="button"
-                                            fullWidth
-                                            variant="contained"
-                                            color="primary"
-                                            onClick={() => navigateWithParams('/explorer')}
-                                        >
-                                            {t('explorer-go-to-root')}
-                                        </Button>
-                                    </td>
-                                </tr>
-                            )}
+                            <tr>
+                                <td colSpan={2}>
+                                    <Button
+                                        type="button"
+                                        fullWidth
+                                        variant="contained"
+                                        color="primary"
+                                        onClick={() => navigateWithParams('/explorer')}
+                                    >
+                                        {t('explorer-go-to-root')}
+                                    </Button>
+                                </td>
+                            </tr>
                             {parents && parents.map((entity: Entity) => (
                                 <StyledItem key={entity.id}>
                                     <StyledAction onClick={() => handleNavigate(entity.id)}>
-                                        {entity.code}
+                                        {explorerEntityLabel(entity)}
                                     </StyledAction>
                                     <td>
                                         <StyledHiddenAction>
@@ -236,7 +236,7 @@ const Entities: React.FC = () => {
                             {children.map((entity: Entity) => (
                                 <StyledItem key={entity.id}>
                                     <StyledAction onClick={() => handleNavigate(entity.id)}>
-                                        {entity.code || entity.id}
+                                        {explorerEntityLabel(entity)}
                                     </StyledAction>
                                     <td>
                                         <StyledHiddenAction>
