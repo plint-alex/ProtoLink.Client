@@ -17,6 +17,12 @@ import {
 } from '../../services/textCatalogService';
 import { SYSTEM_PAGE_CODES } from '../../resources/routes-constants';
 import { explorerEntityLabel } from './explorerEntityLabel';
+import {
+    EXPLORER_ROW_ACTIONS_CLASS,
+    deleteEntitySubtree,
+    explorerDeleteConfirmMessage,
+    resolveExplorerAfterDelete,
+} from './explorerDeleteCascade';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -35,13 +41,12 @@ const StyledActionCell = styled('td')({
     width: '100px',
 });
 
+/** Emotion (not JSS): use a real class — `$hiddenAction` never matched. */
 const StyledItem = styled('tr')({
-    '&:hover': {
-        '& $hiddenAction': {
-            visibility: 'visible',
-            opacity: '1',
-            transition: 'opacity 0s, visibility 0s',
-        },
+    [`&:hover .${EXPLORER_ROW_ACTIONS_CLASS}`]: {
+        visibility: 'visible',
+        opacity: 1,
+        transition: 'opacity 0s, visibility 0s',
     },
 });
 
@@ -52,7 +57,7 @@ const StyledAction = styled('td')({
 const StyledHiddenAction = styled('span')({
     cursor: 'pointer',
     visibility: 'hidden',
-    opacity: '0',
+    opacity: 0,
     transition: 'opacity 1s, visibility 1s',
 });
 
@@ -62,6 +67,7 @@ const Entities: React.FC = () => {
     const navigateWithParams = useNavigationWithParams();
     const dispatch = useAppDispatch();
     const [parentIdToAdd, setParentIdToAdd] = React.useState<string>('');
+    const [deleting, setDeleting] = React.useState(false);
     const lang = React.useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
     const [texts, setTexts] = React.useState<Record<string, string>>({});
     // Catalog kids under sys-page-explorer-root may be empty on prod — EN defaults, not raw codes.
@@ -72,6 +78,18 @@ const Entities: React.FC = () => {
 
     const children = useAppSelector((state) => selectEntities(state, 'children'));
     const parents = useAppSelector((state) => selectEntities(state, 'parents'));
+
+    const reloadLists = React.useCallback(
+        (openId: string | undefined) => {
+            if (openId) {
+                void dispatch(getEntities({ data: { parentIds: [openId] }, storageVariable: 'children' }));
+                void dispatch(getEntities({ data: { idsToFindParents: [openId] }, storageVariable: 'parents' }));
+            } else {
+                void dispatch(getEntities({ data: {}, storageVariable: 'children' }));
+            }
+        },
+        [dispatch]
+    );
 
     const handleParentIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setParentIdToAdd(e.target.value);
@@ -84,8 +102,52 @@ const Entities: React.FC = () => {
         }
     };
 
-    const handleDeleteEntity = (entityId: string) => {
-        dispatch(deleteEntity({ id: entityId }));
+    const handleDeleteEntity = async (entity: Entity, deletedIsParentOfOpen: boolean) => {
+        if (deleting) {
+            return;
+        }
+        const label = explorerEntityLabel(entity);
+        if (!window.confirm(explorerDeleteConfirmMessage(label))) {
+            return;
+        }
+
+        setDeleting(true);
+        const remainingParentIds = parents.map((p) => p.id).filter((pid) => pid !== entity.id);
+
+        try {
+            await deleteEntitySubtree(
+                entity.id,
+                async (parentId) => {
+                    const result = await dispatch(
+                        getEntities({
+                            data: { parentIds: [parentId], includeValues: false },
+                        })
+                    ).unwrap();
+                    return (result.data || []).map((row) => ({ id: row.id }));
+                },
+                async (entityId) => {
+                    await dispatch(deleteEntity({ id: entityId })).unwrap();
+                }
+            );
+
+            const next = resolveExplorerAfterDelete({
+                openId: id,
+                deletedId: entity.id,
+                deletedIsParentOfOpen,
+                remainingParentIds,
+            });
+
+            if (next.action === 'navigate') {
+                navigateWithParams(next.path);
+            } else {
+                reloadLists(id);
+            }
+        } catch (error) {
+            console.error('[Explorer] cascade delete failed', error);
+            reloadLists(id);
+        } finally {
+            setDeleting(false);
+        }
     };
 
     const handleAddEntity = async (entityId?: string) => {
@@ -115,13 +177,8 @@ const Entities: React.FC = () => {
     useEffect(() => {
         // Reload data when id changes
         // The deduplication in thunks will prevent actual duplicate requests
-        if (id) {
-            dispatch(getEntities({ data: { parentIds: [id] }, storageVariable: 'children'}));
-            dispatch(getEntities({ data: { idsToFindParents: [id] }, storageVariable: 'parents' }));
-        } else {
-            dispatch(getEntities({ data: {}, storageVariable: 'children' }));
-        }
-    }, [id, dispatch]); // Only depend on id and dispatch to reload when id changes
+        reloadLists(id);
+    }, [id, reloadLists]);
 
     useEffect(() => {
         let cancelled = false;
@@ -146,6 +203,31 @@ const Entities: React.FC = () => {
             cancelled = true;
         };
     }, [lang, location.pathname]);
+
+    const renderRowActions = (entity: Entity, deletedIsParentOfOpen: boolean) => (
+        <StyledHiddenAction className={EXPLORER_ROW_ACTIONS_CLASS}>
+            <Tooltip title={`${t('explorer-copy')} ${entity.id}`}>
+                <IconButton
+                    size="small"
+                    aria-label="CopyEntityId"
+                    disabled={deleting}
+                    onClick={() => handleCopyEntityId(entity.id)}
+                >
+                    <FileCopyIcon />
+                </IconButton>
+            </Tooltip>
+            <Tooltip title={t('explorer-remove-entity')}>
+                <IconButton
+                    size="small"
+                    aria-label="RemoveEntity"
+                    disabled={deleting}
+                    onClick={() => void handleDeleteEntity(entity, deletedIsParentOfOpen)}
+                >
+                    <DeleteIcon />
+                </IconButton>
+            </Tooltip>
+        </StyledHiddenAction>
+    );
 
     return (
         <Grid container spacing={3}>
@@ -172,7 +254,7 @@ const Entities: React.FC = () => {
                                 <td>
                                     <Tooltip title={t('explorer-add-parent')}>
                                         <span>
-                                            <IconButton onClick={handleAddParent} color="primary" disabled={!parentIdToAdd}>
+                                            <IconButton onClick={handleAddParent} color="primary" disabled={!parentIdToAdd || deleting}>
                                                 <AddIcon />
                                             </IconButton>
                                         </span>
@@ -198,26 +280,7 @@ const Entities: React.FC = () => {
                                         {explorerEntityLabel(entity)}
                                     </StyledAction>
                                     <td>
-                                        <StyledHiddenAction>
-                                            <Tooltip title={`${t('explorer-copy')} ${entity.id}`}>
-                                                    <IconButton
-                                                        size="small"
-                                                        aria-label="CopyEntityId"
-                                                        onClick={() => handleCopyEntityId(entity.id)}
-                                                    >
-                                                        <FileCopyIcon />
-                                                    </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title={t('explorer-remove-entity')}>
-                                                <IconButton
-                                                    size="small"
-                                                    aria-label="RemoveEntity"
-                                                    onClick={() => handleDeleteEntity(entity.id)}
-                                                >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </StyledHiddenAction>
+                                        {renderRowActions(entity, true)}
                                     </td>
                                 </StyledItem>
                             ))}
@@ -246,26 +309,7 @@ const Entities: React.FC = () => {
                                         {explorerEntityLabel(entity)}
                                     </StyledAction>
                                     <td>
-                                        <StyledHiddenAction>
-                                            <Tooltip title={`${t('explorer-copy')} ${entity.id}`}>
-                                                    <IconButton
-                                                        size="small"
-                                                        aria-label="CopyEntityId"
-                                                        onClick={() => handleCopyEntityId(entity.id)}
-                                                    >
-                                                        <FileCopyIcon />
-                                                    </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title={t('explorer-remove-entity')}>
-                                                <IconButton
-                                                    size="small"
-                                                    aria-label="RemoveEntity"
-                                                    onClick={() => handleDeleteEntity(entity.id)}
-                                                >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </StyledHiddenAction>
+                                        {renderRowActions(entity, false)}
                                     </td>
                                 </StyledItem>
                             ))}
@@ -275,6 +319,7 @@ const Entities: React.FC = () => {
                         type="button"
                         variant="contained"
                         color="primary"
+                        disabled={deleting}
                         onClick={() => handleAddEntity(id)}
                     >
                         {t('explorer-add-entity')}
