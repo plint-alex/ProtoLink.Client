@@ -3,7 +3,9 @@ import {
     EXPLORER_ROW_ACTIONS_CLASS,
     deleteEntitySubtree,
     explorerDeleteConfirmMessage,
+    explorerUnlinkParentConfirmMessage,
     resolveExplorerAfterDelete,
+    unlinkExplorerParent,
 } from './explorerDeleteCascade'
 
 describe('EXPLORER_ROW_ACTIONS_CLASS', () => {
@@ -17,10 +19,34 @@ describe('explorerDeleteConfirmMessage', () => {
         const msg = explorerDeleteConfirmMessage('My folder')
         expect(msg).toContain('My folder')
         expect(msg.toLowerCase()).toContain('descendant')
+        expect(msg.toLowerCase()).toContain('delete')
     })
 
     it('uses em dash when label blank', () => {
         expect(explorerDeleteConfirmMessage('  ')).toContain('—')
+    })
+})
+
+describe('explorerUnlinkParentConfirmMessage', () => {
+    it('says unlink and that parent/siblings stay', () => {
+        const msg = explorerUnlinkParentConfirmMessage('Parent A')
+        expect(msg).toContain('Parent A')
+        expect(msg.toLowerCase()).toContain('unlink')
+        expect(msg.toLowerCase()).toContain('stay')
+        expect(msg.toLowerCase()).not.toContain('descendant')
+    })
+})
+
+describe('unlinkExplorerParent', () => {
+    it('calls removeParent only — never deleteEntity', async () => {
+        const removeParent = vi.fn().mockResolvedValue(undefined)
+        const deleteEntity = vi.fn()
+
+        await unlinkExplorerParent('open', 'parent', removeParent)
+
+        expect(removeParent).toHaveBeenCalledTimes(1)
+        expect(removeParent).toHaveBeenCalledWith({ id: 'open', parentId: 'parent' })
+        expect(deleteEntity).not.toHaveBeenCalled()
     })
 })
 
@@ -30,21 +56,29 @@ describe('resolveExplorerAfterDelete', () => {
             resolveExplorerAfterDelete({
                 openId: 'open',
                 deletedId: 'child',
-                deletedIsParentOfOpen: false,
                 remainingParentIds: ['p1'],
             })
         ).toEqual({ action: 'stay' })
     })
 
-    it('navigates to remaining parent when deleting a parent of open', () => {
+    it('stays when a parent id is passed but open was not deleted (unlink case)', () => {
         expect(
             resolveExplorerAfterDelete({
                 openId: 'open',
                 deletedId: 'p1',
-                deletedIsParentOfOpen: true,
+                remainingParentIds: ['p2'],
+            })
+        ).toEqual({ action: 'stay' })
+    })
+
+    it('navigates to remaining parent when open id deleted', () => {
+        expect(
+            resolveExplorerAfterDelete({
+                openId: 'open',
+                deletedId: 'open',
                 remainingParentIds: ['p1', 'p2'],
             })
-        ).toEqual({ action: 'navigate', path: '/explorer/p2' })
+        ).toEqual({ action: 'navigate', path: '/explorer/p1' })
     })
 
     it('navigates to /explorer when open id deleted and no parents left', () => {
@@ -52,7 +86,6 @@ describe('resolveExplorerAfterDelete', () => {
             resolveExplorerAfterDelete({
                 openId: 'open',
                 deletedId: 'open',
-                deletedIsParentOfOpen: false,
                 remainingParentIds: [],
             })
         ).toEqual({ action: 'navigate', path: '/explorer' })

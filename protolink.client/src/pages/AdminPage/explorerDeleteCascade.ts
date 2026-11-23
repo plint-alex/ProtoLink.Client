@@ -1,6 +1,7 @@
 /**
- * Admin Explorer E10 cascade — Api DeleteEntity does not remove children.
- * Depth-first: list children (GetEntities ParentIds) → recurse each → then delete self.
+ * Admin Explorer delete scope — cascade only the target (+ descendants).
+ * Parent-row Remove must unlink via RemoveParent — never DeleteEntity on the parent.
+ * Api DeleteEntity does not remove children (E10); client walks depth-first.
  */
 
 export type ExplorerChildRef = { id: string }
@@ -9,7 +10,23 @@ export const EXPLORER_ROW_ACTIONS_CLASS = 'explorer-row-actions'
 
 export function explorerDeleteConfirmMessage(label: string): string {
     const safe = String(label || '').trim() || '—'
-    return `Remove "${safe}" and all its descendants? This cannot be undone.`
+    return `Delete "${safe}" and all its descendants? This cannot be undone.`
+}
+
+export function explorerUnlinkParentConfirmMessage(label: string): string {
+    const safe = String(label || '').trim() || '—'
+    return `Unlink parent "${safe}" from this entity? The parent and its other children stay.`
+}
+
+/**
+ * Parent-row Remove: DeleteRelation only. Never calls DeleteEntity.
+ */
+export async function unlinkExplorerParent(
+    openId: string,
+    parentId: string,
+    removeParent: (params: { id: string; parentId: string }) => Promise<void>
+): Promise<void> {
+    await removeParent({ id: openId, parentId })
 }
 
 /**
@@ -42,18 +59,16 @@ export type ExplorerAfterDelete =
     | { action: 'navigate'; path: string }
 
 /**
- * Leave the open route when the deleted entity is the open id or a listed parent
- * (ancestor of the open route — cascade may wipe the open entity).
+ * Leave the open route only when the deleted entity is the open id.
+ * Parent unlink never deletes — do not navigate for parent-row Remove.
  */
 export function resolveExplorerAfterDelete(opts: {
     openId: string | undefined
     deletedId: string
-    deletedIsParentOfOpen: boolean
     remainingParentIds: string[]
 }): ExplorerAfterDelete {
-    const { openId, deletedId, deletedIsParentOfOpen, remainingParentIds } = opts
-    const mustLeave = openId === deletedId || deletedIsParentOfOpen
-    if (!mustLeave) {
+    const { openId, deletedId, remainingParentIds } = opts
+    if (openId !== deletedId) {
         return { action: 'stay' }
     }
     const next = remainingParentIds.find((pid) => pid && pid !== deletedId)

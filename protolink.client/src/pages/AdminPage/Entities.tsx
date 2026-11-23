@@ -6,9 +6,16 @@ import { Grid, Paper, Button, TextField, IconButton, Tooltip } from '@mui/materi
 import AddIcon from '@mui/icons-material/Add';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import DeleteIcon from '@mui/icons-material/Delete';
+import LinkOffIcon from '@mui/icons-material/LinkOff';
 import { styled } from '@mui/material/styles';
 import { selectEntities, useAppDispatch, useAppSelector } from '../../store/store';
-import { getEntities, deleteEntity, addParent, addEntityAndSelect } from '../../store/actions/thunkActions/entities';
+import {
+    getEntities,
+    deleteEntity,
+    addParent,
+    removeParent,
+    addEntityAndSelect,
+} from '../../store/actions/thunkActions/entities';
 import type { Entity } from '../../types/entities';
 import { copyText } from '../../services/copyText';
 import {
@@ -21,7 +28,9 @@ import {
     EXPLORER_ROW_ACTIONS_CLASS,
     deleteEntitySubtree,
     explorerDeleteConfirmMessage,
+    explorerUnlinkParentConfirmMessage,
     resolveExplorerAfterDelete,
+    unlinkExplorerParent,
 } from './explorerDeleteCascade';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -91,6 +100,25 @@ const Entities: React.FC = () => {
         [dispatch]
     );
 
+    const listChildrenForCascade = React.useCallback(
+        async (parentId: string) => {
+            const result = await dispatch(
+                getEntities({
+                    data: { parentIds: [parentId], includeValues: false },
+                })
+            ).unwrap();
+            return (result.data || []).map((row) => ({ id: row.id }));
+        },
+        [dispatch]
+    );
+
+    const deleteEntityById = React.useCallback(
+        async (entityId: string) => {
+            await dispatch(deleteEntity({ id: entityId })).unwrap();
+        },
+        [dispatch]
+    );
+
     const handleParentIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setParentIdToAdd(e.target.value);
     };
@@ -102,38 +130,48 @@ const Entities: React.FC = () => {
         }
     };
 
-    const handleDeleteEntity = async (entity: Entity, deletedIsParentOfOpen: boolean) => {
+    /** Parent-row Remove: unlink only — never cascade DeleteEntity on the parent. */
+    const handleUnlinkParent = async (parent: Entity) => {
+        if (!id || deleting) {
+            return;
+        }
+        const label = explorerEntityLabel(parent);
+        if (!window.confirm(explorerUnlinkParentConfirmMessage(label))) {
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            await unlinkExplorerParent(id, parent.id, async (params) => {
+                await dispatch(removeParent(params)).unwrap();
+            });
+            reloadLists(id);
+        } catch (error) {
+            console.error('[Explorer] unlink parent failed', error);
+            reloadLists(id);
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    /** Child or open-entity Remove: cascade that target (+ descendants) only. */
+    const handleDeleteSubtree = async (entityId: string, label: string) => {
         if (deleting) {
             return;
         }
-        const label = explorerEntityLabel(entity);
         if (!window.confirm(explorerDeleteConfirmMessage(label))) {
             return;
         }
 
         setDeleting(true);
-        const remainingParentIds = parents.map((p) => p.id).filter((pid) => pid !== entity.id);
+        const remainingParentIds = parents.map((p) => p.id);
 
         try {
-            await deleteEntitySubtree(
-                entity.id,
-                async (parentId) => {
-                    const result = await dispatch(
-                        getEntities({
-                            data: { parentIds: [parentId], includeValues: false },
-                        })
-                    ).unwrap();
-                    return (result.data || []).map((row) => ({ id: row.id }));
-                },
-                async (entityId) => {
-                    await dispatch(deleteEntity({ id: entityId })).unwrap();
-                }
-            );
+            await deleteEntitySubtree(entityId, listChildrenForCascade, deleteEntityById);
 
             const next = resolveExplorerAfterDelete({
                 openId: id,
-                deletedId: entity.id,
-                deletedIsParentOfOpen,
+                deletedId: entityId,
                 remainingParentIds,
             });
 
@@ -204,24 +242,44 @@ const Entities: React.FC = () => {
         };
     }, [lang, location.pathname]);
 
-    const renderRowActions = (entity: Entity, deletedIsParentOfOpen: boolean) => (
+    const renderCopyAction = (entityId: string) => (
+        <Tooltip title={`${t('explorer-copy')} ${entityId}`}>
+            <IconButton
+                size="small"
+                aria-label="CopyEntityId"
+                disabled={deleting}
+                onClick={() => handleCopyEntityId(entityId)}
+            >
+                <FileCopyIcon />
+            </IconButton>
+        </Tooltip>
+    );
+
+    const renderParentRowActions = (entity: Entity) => (
         <StyledHiddenAction className={EXPLORER_ROW_ACTIONS_CLASS}>
-            <Tooltip title={`${t('explorer-copy')} ${entity.id}`}>
+            {renderCopyAction(entity.id)}
+            <Tooltip title={t('explorer-unlink-parent')}>
                 <IconButton
                     size="small"
-                    aria-label="CopyEntityId"
-                    disabled={deleting}
-                    onClick={() => handleCopyEntityId(entity.id)}
+                    aria-label="UnlinkParent"
+                    disabled={deleting || !id}
+                    onClick={() => void handleUnlinkParent(entity)}
                 >
-                    <FileCopyIcon />
+                    <LinkOffIcon />
                 </IconButton>
             </Tooltip>
+        </StyledHiddenAction>
+    );
+
+    const renderChildRowActions = (entity: Entity) => (
+        <StyledHiddenAction className={EXPLORER_ROW_ACTIONS_CLASS}>
+            {renderCopyAction(entity.id)}
             <Tooltip title={t('explorer-remove-entity')}>
                 <IconButton
                     size="small"
                     aria-label="RemoveEntity"
                     disabled={deleting}
-                    onClick={() => void handleDeleteEntity(entity, deletedIsParentOfOpen)}
+                    onClick={() => void handleDeleteSubtree(entity.id, explorerEntityLabel(entity))}
                 >
                     <DeleteIcon />
                 </IconButton>
@@ -274,13 +332,30 @@ const Entities: React.FC = () => {
                                     </Button>
                                 </td>
                             </tr>
+                            {id && (
+                                <tr>
+                                    <td colSpan={2}>
+                                        <Button
+                                            type="button"
+                                            fullWidth
+                                            variant="outlined"
+                                            color="error"
+                                            disabled={deleting}
+                                            aria-label="DeleteCurrentEntity"
+                                            onClick={() => void handleDeleteSubtree(id, id)}
+                                        >
+                                            {t('explorer-delete-current')}
+                                        </Button>
+                                    </td>
+                                </tr>
+                            )}
                             {parents && parents.map((entity: Entity) => (
                                 <StyledItem key={entity.id}>
                                     <StyledAction onClick={() => handleNavigate(entity.id)}>
                                         {explorerEntityLabel(entity)}
                                     </StyledAction>
                                     <td>
-                                        {renderRowActions(entity, true)}
+                                        {renderParentRowActions(entity)}
                                     </td>
                                 </StyledItem>
                             ))}
@@ -309,7 +384,7 @@ const Entities: React.FC = () => {
                                         {explorerEntityLabel(entity)}
                                     </StyledAction>
                                     <td>
-                                        {renderRowActions(entity, false)}
+                                        {renderChildRowActions(entity)}
                                     </td>
                                 </StyledItem>
                             ))}

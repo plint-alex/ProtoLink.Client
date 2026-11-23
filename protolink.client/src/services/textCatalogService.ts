@@ -76,6 +76,8 @@ export const EXPLORER_CHROME_TEXT_CODES = [
     'explorer-add-entity',
     'explorer-copy',
     'explorer-remove-entity',
+    'explorer-unlink-parent',
+    'explorer-delete-current',
     'explorer-loading',
 ] as const
 
@@ -89,6 +91,8 @@ export const EXPLORER_CHROME_DEFAULTS_EN: Record<(typeof EXPLORER_CHROME_TEXT_CO
     'explorer-add-entity': 'Add entity',
     'explorer-copy': 'Copy',
     'explorer-remove-entity': 'Remove',
+    'explorer-unlink-parent': 'Unlink parent',
+    'explorer-delete-current': 'Delete this entity',
     'explorer-loading': 'Loading…',
 }
 
