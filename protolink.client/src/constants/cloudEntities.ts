@@ -11,6 +11,16 @@ export const EMPTY_PERMISSION_ID = '00000000-0000-0000-0000-000000000000'
 /** BusinessLayer.Services.FilesService.CloudFileCode */
 export const CLOUD_FILE_CODE = 'CloudFile'
 
+/** DataAccess.CloudTreeSeedIds.CloudFileTypeEntityId — D2 typeCloudFile */
+export const CLOUD_FILE_TYPE_ENTITY_ID = 'b0000005-0000-4000-8000-000000000002'
+
+/** Legacy Entity.Code discriminators before Code=name rewrite (Api tip e8e5209+). */
+export const LEGACY_CLOUD_DISCRIMINATOR_CODES = new Set([
+    'CloudFile',
+    'CloudFolder',
+    'CloudRoot',
+])
+
 /** BusinessLayer.Services.Contracts.TypeOfValue.String */
 export const TYPE_OF_VALUE_STRING = 0
 

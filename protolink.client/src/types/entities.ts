@@ -11,6 +11,8 @@ export interface Entity {
     viewIds: string[];
     viewId: string;
     mainParentId?: string;
+    /** D2 shared type entity id (e.g. typeCloudFile). */
+    typeEntityId?: string | null;
     name?: string;
     description?: string;
     codeIsUnique?: boolean;

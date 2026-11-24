@@ -24,6 +24,7 @@ import {
 } from '../../services/textCatalogService';
 import { SYSTEM_PAGE_CODES } from '../../resources/routes-constants';
 import { explorerEntityLabel } from './explorerEntityLabel';
+import { explorerChildrenRows } from './explorerChildrenRows';
 import {
     EXPLORER_ROW_ACTIONS_CLASS,
     deleteEntitySubtree,
@@ -87,13 +88,42 @@ const Entities: React.FC = () => {
 
     const children = useAppSelector((state) => selectEntities(state, 'children'));
     const parents = useAppSelector((state) => selectEntities(state, 'parents'));
+    const [openEntity, setOpenEntity] = React.useState<Entity | null>(null);
+    const childrenRows = React.useMemo(
+        () => explorerChildrenRows(openEntity, children),
+        [openEntity, children]
+    );
 
     const reloadLists = React.useCallback(
         (openId: string | undefined) => {
             if (openId) {
-                void dispatch(getEntities({ data: { parentIds: [openId] }, storageVariable: 'children' }));
-                void dispatch(getEntities({ data: { idsToFindParents: [openId] }, storageVariable: 'parents' }));
+                void (async () => {
+                    try {
+                        const openResult = await dispatch(
+                            getEntities({
+                                data: { ids: [openId], includeValues: true },
+                            })
+                        ).unwrap();
+                        setOpenEntity(openResult.data?.[0] ?? null);
+                    } catch (error) {
+                        console.error('[Explorer] failed to load open entity', error);
+                        setOpenEntity(null);
+                    }
+                })();
+                void dispatch(
+                    getEntities({
+                        data: { parentIds: [openId], includeValues: true },
+                        storageVariable: 'children',
+                    })
+                );
+                void dispatch(
+                    getEntities({
+                        data: { idsToFindParents: [openId], includeValues: true },
+                        storageVariable: 'parents',
+                    })
+                );
             } else {
+                setOpenEntity(null);
                 void dispatch(getEntities({ data: {}, storageVariable: 'children' }));
             }
         },
@@ -378,7 +408,7 @@ const Entities: React.FC = () => {
                                     <td colSpan={2}>{t('explorer-loading')}</td>
                                 </tr>
                             )}
-                            {children.map((entity: Entity) => (
+                            {childrenRows.map((entity: Entity) => (
                                 <StyledItem key={entity.id}>
                                     <StyledAction onClick={() => handleNavigate(entity.id)}>
                                         {explorerEntityLabel(entity)}
