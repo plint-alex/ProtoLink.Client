@@ -1,7 +1,7 @@
 {
   "name": "protolink.client",
   "private": true,
-  "version": "1.0.96",
+  "version": "1.0.98",
   "type": "module",
   "scripts": {
     "dev": "vite",
