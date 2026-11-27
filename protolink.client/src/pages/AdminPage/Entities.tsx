@@ -184,7 +184,7 @@ const Entities: React.FC = () => {
         }
     };
 
-    /** Child or open-entity Remove: cascade that target (+ descendants) only. */
+    /** Child-row Remove: cascade that target (+ descendants) only. Open-entity Delete lives on Entity. */
     const handleDeleteSubtree = async (entityId: string, label: string) => {
         if (deleting) {
             return;
@@ -362,23 +362,6 @@ const Entities: React.FC = () => {
                                     </Button>
                                 </td>
                             </tr>
-                            {id && (
-                                <tr>
-                                    <td colSpan={2}>
-                                        <Button
-                                            type="button"
-                                            fullWidth
-                                            variant="outlined"
-                                            color="error"
-                                            disabled={deleting}
-                                            aria-label="DeleteCurrentEntity"
-                                            onClick={() => void handleDeleteSubtree(id, id)}
-                                        >
-                                            {t('explorer-delete-current')}
-                                        </Button>
-                                    </td>
-                                </tr>
-                            )}
                             {parents && parents.map((entity: Entity) => (
                                 <StyledItem key={entity.id}>
                                     <StyledAction onClick={() => handleNavigate(entity.id)}>

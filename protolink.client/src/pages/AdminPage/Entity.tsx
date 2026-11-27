@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useAppDispatch, useAppSelector, selectEntity } from '../../store/store';
-import { useParams } from 'react-router-dom';
-import { getEntity, updateEntity } from '../../store/actions/thunkActions/entities';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAppDispatch, useAppSelector, selectEntity, selectEntities } from '../../store/store';
+import { useLocation, useParams } from 'react-router-dom';
+import { deleteEntity, getEntities, getEntity, updateEntity } from '../../store/actions/thunkActions/entities';
 import { Button, Grid, Paper, TextField, Typography, IconButton, Tooltip, Card, CardContent, Dialog, DialogTitle as MuiDialogTitle, Chip, Stack, Snackbar, Alert, FormControlLabel, Checkbox } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -18,6 +18,19 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../store/store';
 import type { EntitiesStatePart } from '../../store/entitiesSlice';
 import { fetchAuthCapabilities } from '../../services/authCapabilities';
+import { useNavigationWithParams } from '../../hooks/useNavigationWithParams';
+import {
+    resolveExplorerChromeLabel,
+    textCatalogService,
+} from '../../services/textCatalogService';
+import { SYSTEM_PAGE_CODES } from '../../resources/routes-constants';
+import {
+    OPEN_ENTITY_DELETE_ARIA_LABEL,
+    deleteEntitySubtree,
+    explorerDeleteConfirmMessage,
+    resolveExplorerAfterDelete,
+} from './explorerDeleteCascade';
+import { explorerEntityLabel } from './explorerEntityLabel';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
     marginTop: theme.spacing(8),
@@ -141,14 +154,24 @@ const ViewsEditor: React.FC<ViewsEditorProps> = ({ viewIds, onAddView, onRemoveV
 
 const EntityComponent: React.FC = () => {
     const { id: entityId } = useParams<{ id: string }>();
+    const location = useLocation();
+    const navigateWithParams = useNavigationWithParams();
     const dispatch = useAppDispatch();
     const entity = useAppSelector((state) => selectEntity(state, entityId));
+    const parents = useAppSelector((state) => selectEntities(state, 'parents'));
     const accessToken = useSelector((state: RootState) => state.authentication?.accessToken || '');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [dialogValue, setDialogValue] = useState('');
     const [currentValueIndex, setCurrentValueIndex] = useState<number>(-1);
     const [mayClaimUniqueCode, setMayClaimUniqueCode] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [texts, setTexts] = useState<Record<string, string>>({});
     const entities = useSelector((state: RootState) => (state.entities as EntitiesStatePart).entities);
+    const lang = useMemo(() => new URLSearchParams(location.search).get('lang') || 'en-US', [location.search]);
+    const t = useCallback(
+        (code: string) => resolveExplorerChromeLabel(code, texts),
+        [texts]
+    );
 
     useEffect(() => {
         if (entityId) {
@@ -178,6 +201,77 @@ const EntityComponent: React.FC = () => {
             cancelled = true;
         };
     }, [accessToken]);
+
+    useEffect(() => {
+        let cancelled = false;
+        void (async () => {
+            try {
+                const loadedTexts = await textCatalogService.loadPageTexts({
+                    lang,
+                    systemPageCode: SYSTEM_PAGE_CODES.EXPLORER_ROOT,
+                    pathname: location.pathname,
+                });
+                if (!cancelled) {
+                    setTexts((prev) => ({ ...prev, ...loadedTexts }));
+                }
+            } catch (error) {
+                console.error('[Explorer] failed to load page texts for Entity', error);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [lang, location.pathname]);
+
+    const listChildrenForCascade = useCallback(
+        async (parentId: string) => {
+            const result = await dispatch(
+                getEntities({
+                    data: { parentIds: [parentId], includeValues: false },
+                })
+            ).unwrap();
+            return (result.data || []).map((row) => ({ id: row.id }));
+        },
+        [dispatch]
+    );
+
+    const deleteEntityById = useCallback(
+        async (id: string) => {
+            await dispatch(deleteEntity({ id })).unwrap();
+        },
+        [dispatch]
+    );
+
+    const handleDeleteCurrentEntity = async () => {
+        if (!entityId || deleting) {
+            return;
+        }
+        const label = entity ? explorerEntityLabel(entity) : entityId;
+        if (!window.confirm(explorerDeleteConfirmMessage(label))) {
+            return;
+        }
+
+        setDeleting(true);
+        const remainingParentIds = (parents || []).map((p) => p.id);
+
+        try {
+            await deleteEntitySubtree(entityId, listChildrenForCascade, deleteEntityById);
+
+            const next = resolveExplorerAfterDelete({
+                openId: entityId,
+                deletedId: entityId,
+                remainingParentIds,
+            });
+
+            if (next.action === 'navigate') {
+                navigateWithParams(next.path);
+            }
+        } catch (error) {
+            console.error('[Explorer] open-entity cascade delete failed', error);
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     const [saveOk, setSaveOk] = useState(false);
     const formik = useFormik({
@@ -398,14 +492,30 @@ const EntityComponent: React.FC = () => {
                         </Button>
                     </Grid>
                     <Grid item sm={12} lg={6}>
-                        <Button
-                            fullWidth
-                            type="submit"
-                            variant="contained"
-                            color="primary"
-                        >
-                            Update entity
-                        </Button>
+                        <Stack spacing={1}>
+                            <Button
+                                fullWidth
+                                type="submit"
+                                variant="contained"
+                                color="primary"
+                                disabled={deleting}
+                            >
+                                Update entity
+                            </Button>
+                            {entityId && (
+                                <Button
+                                    type="button"
+                                    fullWidth
+                                    variant="outlined"
+                                    color="error"
+                                    disabled={deleting}
+                                    aria-label={OPEN_ENTITY_DELETE_ARIA_LABEL}
+                                    onClick={() => void handleDeleteCurrentEntity()}
+                                >
+                                    {t('explorer-delete-current')}
+                                </Button>
+                            )}
+                        </Stack>
                     </Grid>
                 </Grid>
             </form>

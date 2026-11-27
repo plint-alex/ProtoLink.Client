@@ -8,6 +8,12 @@ export type ExplorerChildRef = { id: string }
 
 export const EXPLORER_ROW_ACTIONS_CLASS = 'explorer-row-actions'
 
+/** Open-entity Delete lives on the Entity form (Update cluster), not Parents/Go-to-root. */
+export const OPEN_ENTITY_DELETE_HOST = 'Entity' as const
+
+/** Stable aria-label for open-entity Delete this entity. */
+export const OPEN_ENTITY_DELETE_ARIA_LABEL = 'DeleteCurrentEntity'
+
 export function explorerDeleteConfirmMessage(label: string): string {
     const safe = String(label || '').trim() || '—'
     return `Delete "${safe}" and all its descendants? This cannot be undone.`

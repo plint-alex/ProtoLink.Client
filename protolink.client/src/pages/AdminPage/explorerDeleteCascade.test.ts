@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
     EXPLORER_ROW_ACTIONS_CLASS,
+    OPEN_ENTITY_DELETE_ARIA_LABEL,
+    OPEN_ENTITY_DELETE_HOST,
     deleteEntitySubtree,
     explorerDeleteConfirmMessage,
     explorerUnlinkParentConfirmMessage,
@@ -11,6 +13,13 @@ import {
 describe('EXPLORER_ROW_ACTIONS_CLASS', () => {
     it('is a stable class name for hover CSS', () => {
         expect(EXPLORER_ROW_ACTIONS_CLASS).toBe('explorer-row-actions')
+    })
+})
+
+describe('open-entity Delete placement contract', () => {
+    it('hosts DeleteCurrentEntity on Entity form (Update cluster), not Parents', () => {
+        expect(OPEN_ENTITY_DELETE_HOST).toBe('Entity')
+        expect(OPEN_ENTITY_DELETE_ARIA_LABEL).toBe('DeleteCurrentEntity')
     })
 })
 
